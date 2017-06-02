@@ -194,6 +194,12 @@ def fetch_protokolle():
     for i in range(30, 260):
         url = ARCHIVE_URL % i
         urls.add(url)
+    new_urls = get_new_urls()
+    offset = 20
+    while len(new_urls) == 20:
+        new_urls = get_new_urls(offset)
+        urls = urls.union(new_urls)
+        offset += 20
 
     for url in urls:
         txt_file = os.path.join(TXT_DIR, os.path.basename(url))
@@ -207,6 +213,18 @@ def fetch_protokolle():
                 fh.write(r.content)
 
             print url, txt_file
+
+
+def get_new_urls(offset=0):
+    base_url = "https://www.bundestag.de"
+    url = "https://www.bundestag.de/ajax/filterlist/de/dokumente/protokolle/plenarprotokolle/plenarprotokolle/-/455046/"
+    params = {"limit": 20,
+              "noFilterSet": "true",
+              "offset": offset
+              }
+    res = requests.get(url, params=params)
+    doc = html.fromstring(res.content)
+    return {urljoin(base_url, a.get('href')) for a in doc.findall('.//a')}
 
 
 if __name__ == '__main__':
