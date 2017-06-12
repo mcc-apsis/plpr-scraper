@@ -29,7 +29,13 @@ SPEAKER_STOPWORDS = ['ich zitiere', 'zitieren', 'Zitat', 'zitiert',
 
 BEGIN_MARK = re.compile('Beginn: [X\d]{1,2}.\d{1,2} Uhr')
 END_MARK = re.compile('(\(Schluss:.\d{1,2}.\d{1,2}.Uhr\).*|Schluss der Sitzung)')
-SPEAKER_MARK = re.compile('  (.{5,140}):\s*$')
+
+#speaker types
+PARTY_MEMBER = re.compile('  (.{5,140}\(.*\)):\s*$')
+PRESIDENT = re.compile('  ((Vizepräsident(in)?|Präsident(in)?).{5,140}):\s*$')
+STAATSSEKR = re.compile('  (.{5,140}, Parl\. Staatssekret\xc3\xa4r.*):\s*$')
+MINISTER = re.compile('  (.{5,140}, Bundesminister.*):\s*$')
+
 TOP_MARK = re.compile('.*(rufe.*die Frage|zur Frage|der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt).*')
 POI_MARK = re.compile('\((.*)\)\s*$', re.M)
 WRITING_BEGIN = re.compile('.*werden die Reden zu Protokoll genommen.*')
@@ -109,7 +115,10 @@ class SpeechParser(object):
                 if sw.lower() in line.lower():
                     has_stopword = True
 
-            m = SPEAKER_MARK.match(line)
+            m = (PRESIDENT.match(line) or
+                 PARTY_MEMBER.match(line) or
+                 STAATSSEKR.match(line) or
+                 MINISTER.match(line))
             if m is not None and not is_top and not has_stopword:
                 if speaker is not None:
                     yield emit()
