@@ -78,8 +78,8 @@ class SpeechParser(object):
                 'text': "\n\n".join(text).strip()
             }
             if reset_chair:
-            [text.pop() for i in xrange(len(text))]
                 self.chair = False
+            [text.pop() for i in xrange(len(text))]
             return data
 
         for line in self.lines:
