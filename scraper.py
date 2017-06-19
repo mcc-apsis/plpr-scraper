@@ -68,21 +68,21 @@ class SpeechParser(object):
 
     def __iter__(self):
         self.in_session = False
+        self.chair = False
         speaker = None
         in_writing = False
-        chair_ = [False]
         text = []
 
         def emit(reset_chair=True):
             data = {
                 'speaker': speaker,
                 'in_writing': in_writing,
-                'type': 'chair' if chair_[0] else 'speech',
+                'type': 'chair' if self.chair is True else 'speech',
                 'text': "\n\n".join(text).strip()
             }
             if reset_chair:
-                chair_[0] = False
             [text.pop() for i in xrange(len(text))]
+                self.chair = False
             return data
 
         for line in self.lines:
@@ -125,7 +125,7 @@ class SpeechParser(object):
                 _speaker = m.group(1)
                 role = line.strip().split(' ')[0]
                 speaker = _speaker
-                chair_[0] = role in CHAIRS
+                self.chair = role in CHAIRS
                 continue
 
             m = POI_MARK.match(rline)
