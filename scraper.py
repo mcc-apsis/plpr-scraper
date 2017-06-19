@@ -1,4 +1,5 @@
 # coding: utf-8
+from __future__ import print_function
 import os
 import re
 import logging
@@ -161,7 +162,7 @@ def parse_transcript(filename):
         'sitzung': session,
         'wahlperiode': wp
     }
-    print "Loading transcript: %s/%.3d, from %s" % (wp, session, filename)
+    print("Loading transcript: %s/%.3d, from %s" % (wp, session, filename))
     seq = 0
     parser = SpeechParser(text.split('\n'))
 
@@ -217,7 +218,7 @@ def fetch_protokolle():
             with open(txt_file, 'wb') as fh:
                 fh.write(r.content)
 
-            print url, txt_file
+            print(url, txt_file)
 
 
 def get_new_urls(offset=0):
