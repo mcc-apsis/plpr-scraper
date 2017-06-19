@@ -43,6 +43,7 @@ WRITING_BEGIN = re.compile('.*werden die Reden zu Protokoll genommen.*')
 WRITING_END = re.compile(u'(^Tagesordnungspunkt .*:\s*$|– Drucksache d{2}/\d{2,6} –.*|^Ich schließe die Aussprache.$)')
 
 db = os.environ.get('DATABASE_URI', 'sqlite:///data.sqlite')
+print("USING DATABASE {}".format(db))
 eng = dataset.connect(db)
 table = eng['de_bundestag_plpr']
 
