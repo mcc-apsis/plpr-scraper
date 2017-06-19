@@ -4,4 +4,4 @@ lxml
 normality
 dataset
 
-git+https://github.com/bundestag/normdatei
+git+https://github.com/datenschule/normdatei
