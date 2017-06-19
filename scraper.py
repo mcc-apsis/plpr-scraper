@@ -32,7 +32,7 @@ END_MARK = re.compile('(\(Schluss:.\d{1,2}.\d{1,2}.Uhr\).*|Schluss der Sitzung)'
 
 #speaker types
 PARTY_MEMBER = re.compile('  (.{5,140}\(.*\)):\s*$')
-PRESIDENT = re.compile('  ((Vizepräsident(in)?|Präsident(in)?).{5,140}):\s*$')
+PRESIDENT = re.compile('  ((Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?).{5,140}):\s*$')
 STAATSSEKR = re.compile('  (.{5,140}, Parl\. Staatssekret\xc3\xa4r.*):\s*$')
 MINISTER = re.compile('  (.{5,140}, Bundesminister.*):\s*$')
 
