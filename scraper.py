@@ -41,10 +41,6 @@ POI_MARK = re.compile('\((.*)\)\s*$', re.M)
 WRITING_BEGIN = re.compile('.*werden die Reden zu Protokoll genommen.*')
 WRITING_END = re.compile(u'(^Tagesordnungspunkt .*:\s*$|– Drucksache d{2}/\d{2,6} –.*|^Ich schließe die Aussprache.$)')
 
-# POI_PREFIXES = re.compile(u'(Ge ?genruf|Weiterer Zuruf|Zuruf|Weiterer)( de[sr] (Abg.|Staatsministers|Bundesministers|Parl. Staatssekretärin))?')
-# REM_CHAIRS = '|'.join(CHAIRS)
-# NAME_REMOVE = re.compile(u'(\\[.*\\]|\\(.*\\)|%s|^Abg.? |Liedvortrag|Bundeskanzler(in)?|, zur.*|, auf die| an die|, an .*|, Parl\\. .*|gewandt|, Staatsmin.*|, Bundesmin.*|, Ministe.*)' % REM_CHAIRS, re.U)
-
 db = os.environ.get('DATABASE_URI', 'sqlite:///data.sqlite')
 eng = dataset.connect(db)
 table = eng['de_bundestag_plpr']
