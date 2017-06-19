@@ -148,9 +148,6 @@ def file_metadata(filename):
     return int(fname[:2]), int(fname[2:5])
 
 
-names = set()
-
-
 def parse_transcript(filename):
     wp, session = file_metadata(filename)
     with open(filename, 'rb') as fh:
