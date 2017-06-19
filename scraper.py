@@ -117,7 +117,7 @@ class SpeechParser(object):
                  STAATSSEKR.match(line) or
                  MINISTER.match(line))
             if m is not None and not is_top and not has_stopword:
-                if speaker is not None:
+                if speaker is not None and text:
                     yield emit()
                 _speaker = m.group(1)
                 role = line.strip().split(' ')[0]
