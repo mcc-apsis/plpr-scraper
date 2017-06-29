@@ -6,7 +6,7 @@ import logging
 import requests
 import dataset
 from lxml import html
-from urlparse import urljoin
+from urllib.parse import urljoin
 from normdatei.text import clean_text, clean_name, fingerprint
 from normdatei.parties import search_party_names
 
@@ -20,7 +20,7 @@ OUT_DIR = os.path.join(DATA_PATH, 'out')
 INDEX_URL = 'https://www.bundestag.de/plenarprotokolle'
 ARCHIVE_URL = 'http://webarchiv.bundestag.de/archive/2013/0927/dokumente/protokolle/plenarprotokolle/plenarprotokolle/17%03.d.txt'
 
-CHAIRS = [u'Vizepräsidentin', u'Vizepräsident', u'Präsident', u'Präsidentin', u'Alterspräsident', u'Alterspräsidentin']
+CHAIRS = ['Vizepräsidentin', 'Vizepräsident', 'Präsident', 'Präsidentin', 'Alterspräsident', 'Alterspräsidentin']
 
 SPEAKER_STOPWORDS = ['ich zitiere', 'zitieren', 'Zitat', 'zitiert',
                      'ich rufe den', 'ich rufe die',
@@ -79,7 +79,7 @@ class SpeechParser(object):
             }
             if reset_chair:
                 self.chair = False
-            [text.pop() for i in xrange(len(text))]
+            [text.pop() for i in range(len(text))]
             return data
 
         for line in self.lines:
