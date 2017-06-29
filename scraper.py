@@ -52,7 +52,6 @@ class SpeechParser(object):
 
     def __init__(self, lines):
         self.lines = lines
-        self.missing_recon = False
 
     def parse_pois(self, group):
         for poi in group.split(' - '):
@@ -120,9 +119,8 @@ class SpeechParser(object):
             if m is not None and not is_top and not has_stopword:
                 if speaker is not None and text:
                     yield emit()
-                _speaker = m.group(1)
                 role = line.strip().split(' ')[0]
-                speaker = _speaker
+                speaker = m.group(1)
                 self.chair = role in CHAIRS
                 continue
 
