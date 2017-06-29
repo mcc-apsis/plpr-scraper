@@ -149,8 +149,16 @@ def file_metadata(filename):
 
 def parse_transcript(filename):
     wp, session = file_metadata(filename)
-    with open(filename, 'rb') as fh:
-        text = clean_text(fh.read())
+    try:
+        with open(filename) as fh:
+            content = fh.read()
+            text = clean_text(content)
+    except UnicodeDecodeError:
+        print("Reloading in other encodig")
+        with open(filename, encoding="windows-1252") as fh:
+            content = fh.read()
+            text = clean_text(content)
+
     table.delete(wahlperiode=wp, sitzung=session)
 
     base_data = {
