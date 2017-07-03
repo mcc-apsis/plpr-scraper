@@ -1,0 +1,8 @@
+#!/usr/bin/env python3
+
+from scraper import scraper
+
+scraper.fetch_protokolle()
+
+#for filename in os.listdir(TXT_DIR):
+#    parse_transcript(os.path.join(TXT_DIR, filename))
