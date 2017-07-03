@@ -204,7 +204,9 @@ def fetch_protokolle():
     for i in range(30, 260):
         url = ARCHIVE_URL % i
         urls.add(url)
+
     new_urls = get_new_urls()
+    urls = urls.union(new_urls)
     offset = 20
     while len(new_urls) == 20:
         new_urls = get_new_urls(offset)
