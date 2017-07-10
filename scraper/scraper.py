@@ -223,11 +223,11 @@ def parse_transcript(filename):
     db_session.bulk_insert_mappings(Utterance, entries)
     db_session.commit()
 
-    q = '''SELECT * FROM de_bundestag_plpr WHERE wahlperiode = :w AND sitzung = :s
-            ORDER BY sequence ASC'''
-    fcsv = os.path.basename(filename).replace('.txt', '.csv')
-    rp = eng.query(q, w=wp, s=session)
-    dataset.freeze(rp, filename=fcsv, prefix=OUT_DIR, format='csv')
+    # q = '''SELECT * FROM de_bundestag_plpr WHERE wahlperiode = :w AND sitzung = :s
+    #         ORDER BY sequence ASC'''
+    # fcsv = os.path.basename(filename).replace('.txt', '.csv')
+    # rp = eng.query(q, w=wp, s=session)
+    # dataset.freeze(rp, filename=fcsv, prefix=OUT_DIR, format='csv')
 
 
 def fetch_protokolle():
