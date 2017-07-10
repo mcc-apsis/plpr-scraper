@@ -7,7 +7,7 @@ import requests
 import dataset
 from lxml import html
 from urllib.parse import urljoin
-from normdatei.text import clean_text, clean_name, fingerprint
+from normdatei.text import clean_text, clean_name, fingerprint, extract_agenda_numbers
 from normdatei.parties import search_party_names
 
 log = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ PRESIDENT = re.compile('\s*((Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präs
 STAATSSEKR = re.compile('\s*(.{5,140}, Parl\. Staatssekret\xc3\xa4r.*):\s*$')
 MINISTER = re.compile('\s*(.{5,140}, Bundesminister.*):\s*$')
 
-TOP_MARK = re.compile('.*(rufe.*die Frage|zur Frage|der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt).*')
+TOP_MARK = re.compile('.*(?: rufe.*die Frage|zur Frage|der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt)(.*)')
 POI_MARK = re.compile('\((.*)\)\s*$', re.M)
 WRITING_BEGIN = re.compile('.*werden die Reden zu Protokoll genommen.*')
 WRITING_END = re.compile(u'(^Tagesordnungspunkt .*:\s*$|– Drucksache d{2}/\d{2,6} –.*|^Ich schließe die Aussprache.$)')
@@ -67,6 +67,7 @@ class SpeechParser(object):
         self.in_session = False
         self.chair = False
         speaker = None
+        top = None
         in_writing = False
         text = []
 
@@ -75,7 +76,8 @@ class SpeechParser(object):
                 'speaker': speaker,
                 'in_writing': in_writing,
                 'type': 'chair' if self.chair is True else 'speech',
-                'text': "\n\n".join(text).strip()
+                'text': "\n\n".join(text).strip(),
+                'top': top,
             }
             if reset_chair:
                 self.chair = False
@@ -104,7 +106,11 @@ class SpeechParser(object):
                 continue
 
             is_top = False
-            if TOP_MARK.match(line):
+            top_match = TOP_MARK.match(line)
+            if self.chair and top_match:
+                new_top = extract_agenda_numbers(top_match.group(1))
+                if new_top:
+                    top = ", ".join(new_top)
                 is_top = True
 
             has_stopword = False
@@ -134,6 +140,7 @@ class SpeechParser(object):
                             'speaker': _speaker,
                             'in_writing': False,
                             'type': 'poi',
+                            'top': top,
                             'text': _text
                         }
                     continue
