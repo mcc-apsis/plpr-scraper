@@ -161,7 +161,7 @@ def parse_transcript(filename):
             content = fh.read()
             text = clean_text(content)
     except UnicodeDecodeError:
-        print("Reloading in other encodig")
+        print("Reloading in other encoding (windows-1252)")
         with open(filename, encoding="windows-1252") as fh:
             content = fh.read()
             text = clean_text(content)
