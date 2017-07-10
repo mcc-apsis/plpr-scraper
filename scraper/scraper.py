@@ -37,7 +37,7 @@ PRESIDENT = re.compile('\s*((Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präs
 STAATSSEKR = re.compile('\s*(.{5,140}, Parl\. Staatssekretär.*):\s*$')
 MINISTER = re.compile('\s*(.{5,140}, Bundesminister.*):\s*$')
 
-TOP_MARK = re.compile('.*(?: rufe.*die Frage|zur Frage|der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt)(.*)')
+TOP_MARK = re.compile('.*(?: rufe.*der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt)(.*)')
 POI_MARK = re.compile('\((.*)\)\s*$', re.M)
 WRITING_BEGIN = re.compile('.*werden die Reden zu Protokoll genommen.*')
 WRITING_END = re.compile(u'(^Tagesordnungspunkt .*:\s*$|– Drucksache d{2}/\d{2,6} –.*|^Ich schließe die Aussprache.$)')
