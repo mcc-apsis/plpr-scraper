@@ -84,3 +84,27 @@ Jakob Mierscheid (CDU):
         self.assertEqual(lines[0], first)
         self.assertEqual(lines[1], second)
         self.assertEqual(lines[2], third)
+
+    def test_staatssekr(self):
+        text = """
+Beginn: 12:30 Uhr
+
+  Präsident Dr. Norbert Lammert: 
+  Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.
+Dr. Michael Meister, Parl. Staatssekretär beim Bundesminister der Finanzen:
+  Dankesehr! Jetzt rede ich! 
+        """
+        parser = SpeechParser(text.split('\n'))
+        lines = list(parser)
+        first = {'speaker': 'Präsident Dr. Norbert Lammert',
+                 'in_writing': False,
+                 'type': 'chair',
+                  'top': None,
+                 'text': 'Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.'}
+        second = {'speaker': 'Dr. Michael Meister, Parl. Staatssekretär beim Bundesminister der Finanzen',
+                  'in_writing': False,
+                  'type': 'speech',
+                  'top': None,
+                  'text': 'Dankesehr! Jetzt rede ich!'}
+        self.assertEqual(lines[0], first)
+        self.assertEqual(lines[1], second)
