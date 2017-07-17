@@ -68,13 +68,11 @@ class SpeechParser(object):
         self.chair = False
         speaker = None
         top = None
-        in_writing = False
         text = []
 
         def emit(reset_chair=True):
             data = {
                 'speaker': speaker,
-                'in_writing': in_writing,
                 'type': 'chair' if self.chair is True else 'speech',
                 'text': "\n\n".join(text).strip(),
                 'top': top,
@@ -95,12 +93,6 @@ class SpeechParser(object):
 
             if END_MARK.match(rline):
                 return
-
-            if WRITING_BEGIN.match(rline):
-                in_writing = True
-
-            if WRITING_END.match(rline):
-                in_writing = False
 
             if not len(rline):
                 continue
@@ -134,11 +126,9 @@ class SpeechParser(object):
             if m is not None:
                 if not m.group(1).lower().strip().startswith('siehe'):
                     yield emit(reset_chair=False)
-                    in_writing = False
                     for _speaker, _text in self.parse_pois(m.group(1)):
                         yield {
                             'speaker': _speaker,
-                            'in_writing': False,
                             'type': 'poi',
                             'top': top,
                             'text': _text
