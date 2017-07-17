@@ -9,6 +9,9 @@ from lxml import html
 from urllib.parse import urljoin
 from normdatei.text import clean_text, clean_name, fingerprint, extract_agenda_numbers
 from normdatei.parties import search_party_names
+from sqlalchemy import create_engine, Column, Integer, String, Boolean
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
 log = logging.getLogger(__name__)
 
@@ -46,6 +49,36 @@ db = os.environ.get('DATABASE_URI', 'sqlite:///data.sqlite')
 print("USING DATABASE {}".format(db))
 eng = dataset.connect(db)
 table = eng['de_bundestag_plpr']
+
+engine = create_engine(db)
+Base = declarative_base()
+Base.metadata.create_all(engine)
+Session = sessionmaker(bind=engine)
+db_session = Session()
+
+
+class Utterance(Base):
+    __tablename__ = "de_bundestag_plpr"
+
+    id = Column(Integer, primary_key=True)
+    wahlperiode = Column(Integer)
+    sitzung = Column(Integer)
+    sequence = Column(Integer)
+    speaker_cleaned = Column(String)
+    speaker_party = Column(String)
+    speaker = Column(String)
+    speaker_fp = Column(String)
+    in_writing = Column(Boolean)
+    top = Column(String)
+    type = Column(String)
+    text = Column(String)
+
+    @staticmethod
+    def from_dict(dictionary):
+        utterance = Utterance()
+        for key, value in dictionary.items():
+            setattr(utterance, key, value)
+        return utterance
 
 
 class SpeechParser(object):
@@ -164,7 +197,10 @@ def parse_transcript(filename):
             content = fh.read()
             text = clean_text(content)
 
-    table.delete(wahlperiode=wp, sitzung=session)
+    db_session.query(Utterance) \
+              .filter(Utterance.wahlperiode == wp) \
+              .filter(Utterance.sitzung == session) \
+              .delete(synchronize_session=False)
 
     base_data = {
         'filename': filename,
@@ -175,6 +211,7 @@ def parse_transcript(filename):
     seq = 0
     parser = SpeechParser(text.split('\n'))
 
+    entries = []
     for contrib in parser:
         contrib.update(base_data)
         contrib['sequence'] = seq
@@ -182,13 +219,15 @@ def parse_transcript(filename):
         contrib['speaker_fp'] = fingerprint(contrib['speaker_cleaned'])
         contrib['speaker_party'] = search_party_names(contrib['speaker'])
         seq += 1
-        table.insert(contrib)
+        entries.append(contrib)
+    db_session.bulk_insert_mappings(Utterance, entries)
+    db_session.commit()
 
-    q = '''SELECT * FROM de_bundestag_plpr WHERE wahlperiode = :w AND sitzung = :s
-            ORDER BY sequence ASC'''
-    fcsv = os.path.basename(filename).replace('.txt', '.csv')
-    rp = eng.query(q, w=wp, s=session)
-    dataset.freeze(rp, filename=fcsv, prefix=OUT_DIR, format='csv')
+    # q = '''SELECT * FROM de_bundestag_plpr WHERE wahlperiode = :w AND sitzung = :s
+    #         ORDER BY sequence ASC'''
+    # fcsv = os.path.basename(filename).replace('.txt', '.csv')
+    # rp = eng.query(q, w=wp, s=session)
+    # dataset.freeze(rp, filename=fcsv, prefix=OUT_DIR, format='csv')
 
 
 def fetch_protokolle():
