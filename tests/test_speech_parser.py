@@ -1,4 +1,5 @@
 # -!- coding:utf-8 -!-
+import os
 import unittest
 
 from scraper.scraper import SpeechParser
@@ -98,3 +99,51 @@ Dr. Michael Meister, Parl. Staatssekretär beim Bundesminister der Finanzen:
                   'text': 'Dankesehr! Jetzt rede ich!'}
         self.assertEqual(lines[0], first)
         self.assertEqual(lines[1], second)
+
+    def test_staatsminister(self):
+        text = """
+Beginn: 12:30 Uhr
+
+  Präsident Dr. Norbert Lammert: 
+  Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.
+Dr. Maria Böhmer, Staatsministerin bei der Bundeskanzlerin:
+  Dankesehr! Jetzt rede ich! 
+            """
+        parser = SpeechParser(text.split('\n'))
+        lines = list(parser)
+        first = {'speaker': 'Präsident Dr. Norbert Lammert',
+                 'type': 'chair',
+                 'top': None,
+                 'text': 'Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.'}
+        second = {'speaker': 'Dr. Maria Böhmer, Staatsministerin bei der Bundeskanzlerin',
+                  'type': 'speech',
+                  'top': None,
+                  'text': 'Dankesehr! Jetzt rede ich!'}
+        self.assertEqual(lines[0], first)
+        self.assertEqual(lines[1], second)
+
+
+    def test_multiple_tops(self):
+        dir = os.path.dirname(__file__)
+        filename = os.path.join(dir, './extract.txt')
+        with open(filename) as infile:
+            data = infile.readlines()
+        parser = SpeechParser(data)
+        lines = list(parser)
+        self.assertEqual(lines[0]['speaker'], 'Vizepräsidentin Petra Pau')
+        self.assertEqual(lines[1]['type'], 'poi')
+        self.assertEqual(lines[2]['speaker'], 'Vizepräsidentin Petra Pau')
+        self.assertEqual(lines[3]['speaker'], 'Harald Ebner (BÜNDNIS 90/DIE GRÜNEN)')
+        self.assertEqual(lines[4]['speaker'], 'Vizepräsidentin Petra Pau')
+        self.assertEqual(lines[5]['type'], 'poi')
+        self.assertEqual(lines[6]['speaker'], 'Vizepräsidentin Petra Pau')
+
+        self.assertEqual(lines[0]['top'],
+                         '21, 22 a, 22 i, 22 a, 22 b, 22 c, 22 d, 22 e, 22 f, 22 g, 22 h, 22 i, 4, 5 a, 5 b, 5 c, 5 d, 5 e, 5 f, 5 g, 4')
+        self.assertEqual(lines[1]['top'],
+                         '21, 22 a, 22 i, 22 a, 22 b, 22 c, 22 d, 22 e, 22 f, 22 g, 22 h, 22 i, 4, 5 a, 5 b, 5 c, 5 d, 5 e, 5 f, 5 g, 4')
+        self.assertEqual(lines[2]['top'], '5')
+        self.assertEqual(lines[3]['top'], '5')
+        self.assertEqual(lines[4]['top'], '100')
+        self.assertEqual(lines[5]['top'], '100')
+        self.assertEqual(lines[6]['top'], '101, 102')

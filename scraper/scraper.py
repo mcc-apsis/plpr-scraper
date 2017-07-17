@@ -12,7 +12,6 @@ from normdatei.parties import search_party_names
 
 log = logging.getLogger(__name__)
 
-
 DATA_PATH = os.environ.get('DATA_PATH', 'data')
 TXT_DIR = os.path.join(DATA_PATH, 'txt')
 OUT_DIR = os.path.join(DATA_PATH, 'out')
@@ -31,10 +30,11 @@ SPEAKER_STOPWORDS = ['ich zitiere', 'zitieren', 'Zitat', 'zitiert',
 BEGIN_MARK = re.compile('Beginn: [X\d]{1,2}.\d{1,2} Uhr')
 END_MARK = re.compile('(\(Schluss:.\d{1,2}.\d{1,2}.Uhr\).*|Schluss der Sitzung)')
 
-#speaker types
+# speaker types
 PARTY_MEMBER = re.compile('\s*(.{5,140}\(.*\)):\s*$')
 PRESIDENT = re.compile('\s*((Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?).{5,140}):\s*$')
 STAATSSEKR = re.compile('\s*(.{5,140}, Parl\. Staatssekretär.*):\s*$')
+STAATSMINISTER = re.compile('\s*(.{5,140}, Staatsminister.*):\s*$')
 MINISTER = re.compile('\s*(.{5,140}, Bundesminister.*):\s*$')
 
 TOP_MARK = re.compile('.*(?: rufe.*der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt)(.*)')
@@ -49,9 +49,10 @@ table = eng['de_bundestag_plpr']
 
 
 class SpeechParser(object):
-
     def __init__(self, lines):
         self.lines = lines
+        self.tops = []
+        self.was_chair = True
 
     def parse_pois(self, group):
         for poi in group.split(' - '):
@@ -66,21 +67,28 @@ class SpeechParser(object):
     def __iter__(self):
         self.in_session = False
         self.chair = False
-        speaker = None
-        top = None
-        text = []
+        self.text = []
+        self.speaker = None
 
-        def emit(reset_chair=True):
+        def emit():
             data = {
-                'speaker': speaker,
-                'type': 'chair' if self.chair is True else 'speech',
-                'text': "\n\n".join(text).strip(),
-                'top': top,
+                'speaker': self.speaker,
+                'type': 'chair' if self.chair else 'speech',
+                'text': "\n\n".join(self.text).strip(),
+                'top': ", ".join(self.tops) if self.tops else None,
             }
-            if reset_chair:
-                self.chair = False
-            [text.pop() for i in range(len(text))]
+            self.was_chair = self.chair
+            self.text = []
             return data
+
+        def emit_poi(speaker, text):
+            self.was_chair = False
+            return {
+                'speaker': speaker,
+                'type': 'poi',
+                'top': ", ".join(self.tops) if self.tops else None,
+                'text': text
+            }
 
         for line in self.lines:
             rline = line.strip()
@@ -101,8 +109,10 @@ class SpeechParser(object):
             top_match = TOP_MARK.match(line)
             if self.chair and top_match:
                 new_top = extract_agenda_numbers(top_match.group(1))
+                if not self.was_chair and new_top:
+                    self.tops = []
                 if new_top:
-                    top = ", ".join(new_top)
+                    self.tops += new_top
                 is_top = True
 
             has_stopword = False
@@ -110,32 +120,30 @@ class SpeechParser(object):
                 if sw.lower() in line.lower():
                     has_stopword = True
 
-            m = (PRESIDENT.match(line) or
-                 PARTY_MEMBER.match(line) or
-                 STAATSSEKR.match(line) or
-                 MINISTER.match(line))
-            if m is not None and not is_top and not has_stopword:
-                if speaker is not None and text:
+            speaker_match = (PRESIDENT.match(line) or
+                             PARTY_MEMBER.match(line) or
+                             STAATSSEKR.match(line) or
+                             STAATSMINISTER.match(line) or
+                             MINISTER.match(line))
+            if speaker_match is not None \
+                    and not is_top \
+                    and not has_stopword:
+                if self.speaker is not None and self.text:
                     yield emit()
                 role = line.strip().split(' ')[0]
-                speaker = m.group(1)
+                self.speaker = speaker_match.group(1)
                 self.chair = role in CHAIRS
                 continue
 
-            m = POI_MARK.match(rline)
-            if m is not None:
-                if not m.group(1).lower().strip().startswith('siehe'):
-                    yield emit(reset_chair=False)
-                    for _speaker, _text in self.parse_pois(m.group(1)):
-                        yield {
-                            'speaker': _speaker,
-                            'type': 'poi',
-                            'top': top,
-                            'text': _text
-                        }
-                    continue
+            poi_match = POI_MARK.match(rline)
+            if poi_match is not None:
+                # if not poi_match.group(1).lower().strip().startswith('siehe'):
+                yield emit()
+                for speaker, text in self.parse_pois(poi_match.group(1)):
+                    yield emit_poi(speaker, text)
+                continue
 
-            text.append(rline)
+            self.text.append(rline)
         yield emit()
 
 
