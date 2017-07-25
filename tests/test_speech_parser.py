@@ -147,3 +147,18 @@ Dr. Maria Böhmer, Staatsministerin bei der Bundeskanzlerin:
         self.assertEqual(lines[4]['top'], '100')
         self.assertEqual(lines[5]['top'], '100')
         self.assertEqual(lines[6]['top'], '101, 102')
+
+    def test_begin_without_colon(self):
+        text = """
+Beginn 9.00 Uhr
+
+  Präsident Dr. Norbert Lammert: 
+  Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.
+            """
+        parser = SpeechParser(text.split('\n'))
+        lines = list(parser)
+        first = {'speaker': 'Präsident Dr. Norbert Lammert',
+                 'type': 'chair',
+                 'top': None,
+                 'text': 'Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.'}
+        self.assertEqual(lines[0], first)

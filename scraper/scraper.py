@@ -30,7 +30,7 @@ SPEAKER_STOPWORDS = ['ich zitiere', 'zitieren', 'Zitat', 'zitiert',
                      'fordert', 'fordern', u'Ich möchte',
                      'Darin steht', ' Aspekte ', ' Punkte ', 'Berichtszeitraum']
 
-BEGIN_MARK = re.compile('Beginn: [X\d]{1,2}.\d{1,2} Uhr')
+BEGIN_MARK = re.compile('Beginn:? [X\d]{1,2}.\d{1,2} Uhr')
 END_MARK = re.compile('(\(Schluss:.\d{1,2}.\d{1,2}.Uhr\).*|Schluss der Sitzung)')
 
 # speaker types
