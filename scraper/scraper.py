@@ -39,6 +39,7 @@ PRESIDENT = re.compile('\s*((Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präs
 STAATSSEKR = re.compile('\s*(.{5,140}, Parl\. Staatssekretär.*):\s*$')
 STAATSMINISTER = re.compile('\s*(.{5,140}, Staatsminister.*):\s*$')
 MINISTER = re.compile('\s*(.{5,140}, Bundesminister.*):\s*$')
+WEHRBEAUFTRAGTER = re.compile('\s*(.{5,140}, Wehrbeauftragter.*):\s*$')
 
 TOP_MARK = re.compile('.*(?: rufe.*der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt)(.*)')
 POI_MARK = re.compile('\((.*)\)\s*$', re.M)
@@ -157,6 +158,7 @@ class SpeechParser(object):
                              PARTY_MEMBER.match(line) or
                              STAATSSEKR.match(line) or
                              STAATSMINISTER.match(line) or
+                             WEHRBEAUFTRAGTER.match(line) or
                              MINISTER.match(line))
             if speaker_match is not None \
                     and not is_top \

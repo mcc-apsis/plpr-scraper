@@ -162,3 +162,25 @@ Beginn 9.00 Uhr
                  'top': None,
                  'text': 'Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.'}
         self.assertEqual(lines[0], first)
+
+    def test_wehrbeauftragter(self):
+        text = """
+Beginn: 12:30 Uhr
+
+Präsident Dr. Norbert Lammert: 
+Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.
+Dr. Hans-Peter Bartels, Wehrbeauftragter des Deutschen Bundestages:
+Dankesehr! Jetzt rede ich! 
+            """
+        parser = SpeechParser(text.split('\n'))
+        lines = list(parser)
+        first = {'speaker': 'Präsident Dr. Norbert Lammert',
+                 'type': 'chair',
+                 'top': None,
+                 'text': 'Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.'}
+        second = {'speaker': 'Dr. Hans-Peter Bartels, Wehrbeauftragter des Deutschen Bundestages',
+                  'type': 'speech',
+                  'top': None,
+                  'text': 'Dankesehr! Jetzt rede ich!'}
+        self.assertEqual(lines[0], first)
+        self.assertEqual(lines[1], second)
