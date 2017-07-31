@@ -41,6 +41,7 @@ STAATSMINISTER = re.compile('\s*(.{5,140}, Staatsminister.*):\s*$')
 MINISTER = re.compile('\s*(.{5,140}, Bundesminister.*):\s*$')
 WEHRBEAUFTRAGTER = re.compile('\s*(.{5,140}, Wehrbeauftragter.*):\s*$')
 BUNDESKANZLER = re.compile('\s*(.{5,140}, Bundeskanzler.*):\s*$')
+BEAUFTRAGT = re.compile('\s*(.{5,140}, Beauftragter? der Bundes.*):\s*$')
 
 TOP_MARK = re.compile('.*(?: rufe.*der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt)(.*)')
 POI_MARK = re.compile('\((.*)\)\s*$', re.M)
@@ -161,6 +162,7 @@ class SpeechParser(object):
                              STAATSMINISTER.match(line) or
                              WEHRBEAUFTRAGTER.match(line) or
                              BUNDESKANZLER.match(line) or
+                             BEAUFTRAGT.match(line) or
                              MINISTER.match(line))
             if speaker_match is not None \
                     and not is_top \
