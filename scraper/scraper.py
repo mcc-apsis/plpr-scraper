@@ -74,13 +74,6 @@ class Utterance(Base):
     type = Column(String)
     text = Column(String)
 
-    @staticmethod
-    def from_dict(dictionary):
-        utterance = Utterance()
-        for key, value in dictionary.items():
-            setattr(utterance, key, value)
-        return utterance
-
 
 class SpeechParser(object):
     def __init__(self, lines):
