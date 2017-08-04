@@ -78,7 +78,6 @@ class Utterance(Base):
 class SpeechParser(object):
     def __init__(self, lines):
         self.lines = lines
-        self.tops = []
         self.was_chair = True
 
     def parse_pois(self, group):
@@ -101,8 +100,7 @@ class SpeechParser(object):
             data = {
                 'speaker': self.speaker,
                 'type': 'chair' if self.chair else 'speech',
-                'text': "\n\n".join(self.text).strip(),
-                'top': ", ".join(self.tops) if self.tops else None,
+                'text': "\n\n".join(self.text).strip()
             }
             self.was_chair = self.chair
             self.text = []
@@ -113,7 +111,6 @@ class SpeechParser(object):
             return {
                 'speaker': speaker,
                 'type': 'poi',
-                'top': ", ".join(self.tops) if self.tops else None,
                 'text': text
             }
 

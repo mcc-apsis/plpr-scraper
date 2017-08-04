@@ -23,23 +23,18 @@ Beginn: 12:30 Uhr
         lines = list(parser)
         first = {'speaker': 'Präsident Dr. Norbert Lammert',
                  'type': 'chair',
-                 'top': None,
                  'text': 'Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.\n\nIch eröffne die Aussprache und erteile das Wort zunächst dem Bundesminister Hermann Gröhe.'}
         second = {'speaker': None,
-                  'top': None,
                   'type': 'poi',
                   'text': 'Beifall bei der CDU/CSU und der SPD'}
         third = {'speaker': 'Hermann Gröhe, Bundesminister für Gesundheit',
                  'type': 'speech',
-                 'top': None,
                  'text': 'Herr Präsident! Liebe Kolleginnen! Liebe Kollegen!'}
         fourth = {'speaker': None,
-                  'top': None,
                   'type': 'poi',
                   'text': 'Beifall bei der CDU/CSU und der SPD'}
         fifth = {'speaker': 'Hermann Gröhe, Bundesminister für Gesundheit',
                  'type': 'speech',
-                 'top': None,
                  'text': 'Wir tun was!'}
 
         self.assertEqual(lines[0], first)
@@ -64,15 +59,12 @@ Jakob Mierscheid (CDU):
         lines = list(parser)
         first = {'speaker': 'Präsident Dr. Norbert Lammert',
                  'type': 'chair',
-                 'top': '1',
                  'text': 'Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.\n\nIch rufe Tagesordnungspunkt 1 auf.'}
         second = {'speaker': 'Hermann Gröhe, Bundesminister für Gesundheit',
                   'type': 'speech',
-                  'top': '1',
                   'text': 'Dankesehr! Jetzt rede ich!'}
         third = {'speaker': 'Jakob Mierscheid (CDU)',
                  'type': 'speech',
-                 'top': '1',
                  'text': 'Wichtig ist auch Tagesordnungspunkt 4!'}
         self.assertEqual(lines[0], first)
         self.assertEqual(lines[1], second)
@@ -91,11 +83,9 @@ Dr. Michael Meister, Parl. Staatssekretär beim Bundesminister der Finanzen:
         lines = list(parser)
         first = {'speaker': 'Präsident Dr. Norbert Lammert',
                  'type': 'chair',
-                 'top': None,
                  'text': 'Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.'}
         second = {'speaker': 'Dr. Michael Meister, Parl. Staatssekretär beim Bundesminister der Finanzen',
                   'type': 'speech',
-                  'top': None,
                   'text': 'Dankesehr! Jetzt rede ich!'}
         self.assertEqual(lines[0], first)
         self.assertEqual(lines[1], second)
@@ -113,11 +103,9 @@ Dr. Maria Böhmer, Staatsministerin bei der Bundeskanzlerin:
         lines = list(parser)
         first = {'speaker': 'Präsident Dr. Norbert Lammert',
                  'type': 'chair',
-                 'top': None,
                  'text': 'Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.'}
         second = {'speaker': 'Dr. Maria Böhmer, Staatsministerin bei der Bundeskanzlerin',
                   'type': 'speech',
-                  'top': None,
                   'text': 'Dankesehr! Jetzt rede ich!'}
         self.assertEqual(lines[0], first)
         self.assertEqual(lines[1], second)
@@ -138,16 +126,6 @@ Dr. Maria Böhmer, Staatsministerin bei der Bundeskanzlerin:
         self.assertEqual(lines[5]['type'], 'poi')
         self.assertEqual(lines[6]['speaker'], 'Vizepräsidentin Petra Pau')
 
-        self.assertEqual(lines[0]['top'],
-                         '21, 22 a, 22 i, 22 a, 22 b, 22 c, 22 d, 22 e, 22 f, 22 g, 22 h, 22 i, 4, 5 a, 5 b, 5 c, 5 d, 5 e, 5 f, 5 g, 4')
-        self.assertEqual(lines[1]['top'],
-                         '21, 22 a, 22 i, 22 a, 22 b, 22 c, 22 d, 22 e, 22 f, 22 g, 22 h, 22 i, 4, 5 a, 5 b, 5 c, 5 d, 5 e, 5 f, 5 g, 4')
-        self.assertEqual(lines[2]['top'], '5')
-        self.assertEqual(lines[3]['top'], '5')
-        self.assertEqual(lines[4]['top'], '100')
-        self.assertEqual(lines[5]['top'], '100')
-        self.assertEqual(lines[6]['top'], '101, 102')
-
     def test_begin_without_colon(self):
         text = """
 Beginn 9.00 Uhr
@@ -159,7 +137,6 @@ Beginn 9.00 Uhr
         lines = list(parser)
         first = {'speaker': 'Präsident Dr. Norbert Lammert',
                  'type': 'chair',
-                 'top': None,
                  'text': 'Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.'}
         self.assertEqual(lines[0], first)
 
@@ -176,11 +153,9 @@ Dankesehr! Jetzt rede ich!
         lines = list(parser)
         first = {'speaker': 'Präsident Dr. Norbert Lammert',
                  'type': 'chair',
-                 'top': None,
                  'text': 'Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.'}
         second = {'speaker': 'Dr. Hans-Peter Bartels, Wehrbeauftragter des Deutschen Bundestages',
                   'type': 'speech',
-                  'top': None,
                   'text': 'Dankesehr! Jetzt rede ich!'}
         self.assertEqual(lines[0], first)
         self.assertEqual(lines[1], second)
@@ -198,11 +173,9 @@ Dankesehr! Jetzt rede ich!
         lines = list(parser)
         first = {'speaker': 'Präsident Dr. Norbert Lammert',
                  'type': 'chair',
-                 'top': None,
                  'text': 'Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.'}
         second = {'speaker': 'Dr. Angela Merkel, Bundeskanzlerin',
                   'type': 'speech',
-                  'top': None,
                   'text': 'Dankesehr! Jetzt rede ich!'}
         self.assertEqual(lines[0], first)
         self.assertEqual(lines[1], second)
@@ -220,11 +193,9 @@ Dankesehr! Jetzt rede ich!
         lines = list(parser)
         first = {'speaker': 'Präsident Dr. Norbert Lammert',
                  'type': 'chair',
-                 'top': None,
                  'text': 'Nehmen Sie bitte Platz. Die Sitzung ist eröffnet.'}
         second = {'speaker': 'Iris Gleicke, Beauftragte der Bundesregierung für die neuen Bundesländer:',
                   'type': 'speech',
-                  'top': None,
                   'text': 'Dankesehr! Jetzt rede ich!'}
         self.assertEqual(lines[0], first)
         self.assertEqual(lines[1], second)
