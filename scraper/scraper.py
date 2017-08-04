@@ -72,7 +72,6 @@ class Utterance(Base):
     speaker = Column(String)
     speaker_fp = Column(String)
     in_writing = Column(Boolean)
-    top = Column(String)
     type = Column(String)
     text = Column(String)
 
@@ -142,13 +141,7 @@ class SpeechParser(object):
                 continue
 
             is_top = False
-            top_match = TOP_MARK.match(line)
-            if self.chair and top_match:
-                new_top = extract_agenda_numbers(top_match.group(1))
-                if not self.was_chair and new_top:
-                    self.tops = []
-                if new_top:
-                    self.tops += new_top
+            if TOP_MARK.match(line):
                 is_top = True
 
             has_stopword = False
