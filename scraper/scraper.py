@@ -71,7 +71,6 @@ class Utterance(Base):
     speaker_party = Column(String)
     speaker = Column(String)
     speaker_fp = Column(String)
-    in_writing = Column(Boolean)
     type = Column(String)
     text = Column(String)
 
