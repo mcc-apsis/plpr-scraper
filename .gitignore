@@ -59,3 +59,8 @@ target/
 data.sqlit*
 .DS_Store
 data/akomantoso/
+.idea
+data/out
+data
+venv-plpr
+venv-plpr3
