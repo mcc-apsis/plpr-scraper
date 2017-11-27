@@ -53,26 +53,26 @@ print("USING DATABASE {}".format(db))
 eng = dataset.connect(db)
 table = eng['de_bundestag_plpr']
 
-engine = create_engine(db)
-Base = declarative_base()
-Base.metadata.create_all(engine)
-Session = sessionmaker(bind=engine)
-db_session = Session()
+# engine = create_engine(db)
+# Base = declarative_base()
+# Base.metadata.create_all(engine)
+# Session = sessionmaker(bind=engine)
+# db_session = Session()
 
 
-class Utterance(Base):
-    __tablename__ = "de_bundestag_plpr"
-
-    id = Column(Integer, primary_key=True)
-    wahlperiode = Column(Integer)
-    sitzung = Column(Integer)
-    sequence = Column(Integer)
-    speaker_cleaned = Column(String)
-    speaker_party = Column(String)
-    speaker = Column(String)
-    speaker_fp = Column(String)
-    type = Column(String)
-    text = Column(String)
+# class Utterance(Base):
+#     __tablename__ = "de_bundestag_plpr"
+#
+#     id = Column(Integer, primary_key=True)
+#     wahlperiode = Column(Integer)
+#     sitzung = Column(Integer)
+#     sequence = Column(Integer)
+#     speaker_cleaned = Column(String)
+#     speaker_party = Column(String)
+#     speaker = Column(String)
+#     speaker_fp = Column(String)
+#     type = Column(String)
+#     text = Column(String)
 
 
 class SpeechParser(object):
@@ -185,10 +185,10 @@ def parse_transcript(filename):
             content = fh.read()
             text = clean_text(content)
 
-    db_session.query(Utterance) \
-              .filter(Utterance.wahlperiode == wp) \
-              .filter(Utterance.sitzung == session) \
-              .delete(synchronize_session=False)
+    # db_session.query(Utterance) \
+    #           .filter(Utterance.wahlperiode == wp) \
+    #           .filter(Utterance.sitzung == session) \
+    #           .delete(synchronize_session=False)
 
     base_data = {
         'filename': filename,
@@ -208,14 +208,28 @@ def parse_transcript(filename):
         contrib['speaker_party'] = search_party_names(contrib['speaker'])
         seq += 1
         entries.append(contrib)
-    db_session.bulk_insert_mappings(Utterance, entries)
-    db_session.commit()
+    # db_session.bulk_insert_mappings(Utterance, entries)
+    # db_session.commit()
+
+    write_db(entries)
 
     # q = '''SELECT * FROM de_bundestag_plpr WHERE wahlperiode = :w AND sitzung = :s
     #         ORDER BY sequence ASC'''
     # fcsv = os.path.basename(filename).replace('.txt', '.csv')
     # rp = eng.query(q, w=wp, s=session)
     # dataset.freeze(rp, filename=fcsv, prefix=OUT_DIR, format='csv')
+
+def write_db(data):
+    database = dataset.connect(db)
+    table = database['plpr']
+    for entry in data:
+        table.insert(entry)
+
+def clear_db():
+    database = dataset.connect(db)
+    table = database['plpr']
+    table.delete()
+
 
 
 def fetch_protokolle():
@@ -272,6 +286,7 @@ def get_new_urls(offset=0):
 
 
 if __name__ == '__main__':
+    clear_db()
     fetch_protokolle()
 
     for filename in os.listdir(TXT_DIR):
