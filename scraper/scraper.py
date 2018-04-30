@@ -2,12 +2,13 @@
 from __future__ import print_function
 import os, sys
 import django
+from django.conf import settings
 import re
 import logging
 import requests
 import dataset
 import datetime
-from lxml import html
+from xml.etree import ElementTree
 from urllib.parse import urljoin
 # Extract agenda numbers not part of normdatei
 from normality import normalize
@@ -17,21 +18,31 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import pprint
+import platform
+import zipfile
 
-sys.path.append('/home/galm/software/django/tmv/BasicBrowser/')
+if platform.node() == "mcc-apsis":
+    sys.path.append('/home/muef/tmv/BasicBrowser/')
+    data_dir = '/home/muef/plpr-scraper/plenarprotokolle'
+else:
+    # local paths
+    sys.path.append('/media/Data/MCC/tmv/BasicBrowser/')
+    data_dir = '/media/Data/MCC/Parliament Germany/Plenarprotokolle'
+
+# imports and settings for django and database
+# --------------------------------------------
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "BasicBrowser.settings")
+# alternatively
+#settings.configure(DEBUG=True)
 django.setup()
 
-
-from parliament.models import *
-from parliament.tasks import *
-from cities.models import *
+# import from appended path
+import parliament.models as pmodels
+from parliament.tasks import do_search
+import cities.models as cmodels
 
 log = logging.getLogger(__name__)
-
-DATA_PATH = os.environ.get('DATA_PATH', 'data')
-TXT_DIR = os.path.join(DATA_PATH, 'txt')
-OUT_DIR = os.path.join(DATA_PATH, 'out')
 
 DATE=re.compile('\w*,\s*(Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag),\s*\w*\s*([0-9]*)\.\s*(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember) ([0-9]{4})')
 D_MONTHS = {
@@ -85,11 +96,6 @@ ABG = 'Abg\.\s*(.*?)(\[[\wäöüßÄÖÜ /]*\])'
 
 pp = pprint.PrettyPrinter(indent=4)
 
-#db = os.environ.get('DATABASE_URI', 'sqlite:///data.sqlite')
-#print("USING DATABASE {}".format(db))
-#eng = dataset.connect(db)
-#table = eng['de_bundestag_plpr']
-
 # engine = create_engine(db)
 # Base = declarative_base()
 # Base.metadata.create_all(engine)
@@ -111,6 +117,7 @@ pp = pprint.PrettyPrinter(indent=4)
 #     type = Column(String)
 #     text = Column(String)
 
+# interjections
 class POI(object):
     def __init__(self,text):
         self.poitext = text
@@ -129,23 +136,25 @@ class POI(object):
             else:
                 self.parties = search_party_names(text)
             self.poitext = sinfo[1].strip()
-            self.type = Interjection.SPEECH
+            self.type = pmodels.Interjection.SPEECH
         elif "Beifall" in text:
             self.parties = search_party_names(text)
-            self.type = Interjection.APPLAUSE
+            self.type = pmodels.Interjection.APPLAUSE
         elif "Widerspruch" in text:
             self.parties = search_party_names(text)
-            self.type = Interjection.OBJECTION
-        elif "Lachen" in text or "Heiterkeit" in text:
+            self.type = pmodels.Interjection.OBJECTION
+        elif "Heiterkeit" in text:
             self.parties = search_party_names(text)
-            self.type = Interjection.AMUSEMENT
+            self.type = pmodels.Interjection.AMUSEMENT
+        elif "Lachen" in text:
+            self.parties = search_party_names(text)
+            self.type = pmodels.Interjection.LAUGHTER
         elif "Zuruf" in text:
             self.parties = search_party_names(text)
-            self.type = Interjection.OUTCRY
+            self.type = pmodels.Interjection.OUTCRY
 
 
 class SpeechParser(object):
-
 
     def __init__(self, lines):
         self.lines = lines
@@ -240,15 +249,13 @@ class SpeechParser(object):
                     and not noparty \
                     and not has_stopword:
 
-
-
-
                 if self.speaker is None and self.text ==[] and self.pars==[]:
                     self.text = []
                 else:
                     if len(self.pars) < 1:
                         par = {
-                            'text': "\n\n".join(self.text).strip(),
+                            'text': "\n".join(self.text).strip(),
+                            # default for strip: removing leading and ending white space
                             'pois': []
                         }
                         self.pars.append(par)
@@ -262,10 +269,11 @@ class SpeechParser(object):
 
             poi_match = POI_MARK.match(rline)
             if poi_match is not None:
+                print("paragraph: {}".format(self.text))
                 # if not poi_match.group(1).lower().strip().startswith('siehe'):
                 #yield emit()
                 par = {
-                    'text': "\n\n".join(self.text).strip(),
+                    'text': "\n".join(self.text).strip(),
                     'pois': []
                 }
                 #self.text = []
@@ -287,46 +295,97 @@ def file_metadata(filename):
         return int(fname[:2]), fname[2:5]
 
 
-def parse_transcript(filename):
-    wp, session = file_metadata(filename)
-    try:
-        with open(filename) as fh:
-            content = fh.read()
-            text = clean_text(content)
-    except UnicodeDecodeError:
-        print("Reloading in other encoding (windows-1252)")
-        with open(filename, encoding="windows-1252") as fh:
-            content = fh.read()
-            text = clean_text(content)
+def german_date(str):
+    if str is None:
+        return None
+    return datetime.datetime.strptime(str,"%d.%m.%Y").date()
+
+
+# ====================================================================
+# ========== parse function ==========================================
+# ====================================================================
+
+def parse_transcript(file, verbosity=1):
+    if isinstance(file, str):
+        print("loading text from {}".format(file))
+        try:
+            with open(file) as fh:
+                content = fh.read()
+                text = clean_text(content)
+        except UnicodeDecodeError:
+            print("Reloading in other encoding (windows-1252)")
+            with open(file, encoding="windows-1252") as fh:
+                content = fh.read()
+                text = clean_text(content)
+        filename = file
+        wp, session = file_metadata(filename)
+
+    elif isinstance(file, zipfile.ZipExtFile):
+        text = file.read()
+        filename = file.name
+        if filename.endswith(".xml"):
+            root = ElementTree.fromstring(text)
+            if verbosity > 0:
+                print("loading text from {}".format(filename))
+
+            # display contents of xml file
+            if verbosity > 1:
+                print("root: {}, attributes: {}".format(root.tag, root.attrib))
+                for child in root:
+                    print("child: {}, attributes: {}".format(child.tag, child.attrib))
+                    print(child.text[:100])
+
+            wp = root.find("WAHLPERIODE").text
+            document_type = root.find("DOKUMENTART").text
+            if document_type != "PLENARPROTOKOLL":
+                print("Warning: document {} is not tagged as Plenarprotokoll but {}".format(filename, document_type))
+            number = root.find("NR").text
+            session = number.split("/")[1]
+            date = root.find("DATUM").text
+            titel = root.find("TITEL").text
+            text = root.find("TEXT").text
+        else:
+            print("filetype not xml")
+            return 0
+
+    else:
+        print("invalid filetype")
+        return 0
 
     base_data = {
         'filename': filename,
         'sitzung': session,
         'wahlperiode': wp
     }
-    print("Loading transcript: {}/{}, from {}".format(wp, session, filename))
+
+    print("Parsing transcript: {}/{}, from {}".format(wp, session, filename))
     seq = 0
     parser = SpeechParser(text.split('\n'))
+    # get_date is not working for all documents
     parser.get_date()
+    if parser.date != german_date(date):
+        print("Warning: dates do not match")
+        print(parser.date)
+        print(german_date(date))
+    # print("text: {}".format(text[:1000]))
 
-    parl, created = Parl.objects.get_or_create(
-        country=Country.objects.get(name="Germany"),
+    parl, created = pmodels.Parl.objects.get_or_create(
+        country=cmodels.Country.objects.get(name="Germany"),
         level='N'
     )
-    ps, created = ParlSession.objects.get_or_create(
+    ps, created = pmodels.ParlSession.objects.get_or_create(
         parliament=parl,
         n=wp
     )
-    doc, created = Document.objects.get_or_create(
+    doc, created = pmodels.Document.objects.get_or_create(
         parlsession=ps,
         doc_type="plenarprotokolle",
-        date=parser.date
+        date=german_date(date)
     )
     doc.sitting=session
     doc.save()
 
     doc.utterance_set.all().delete()
-
 
     entries = []
     for contrib in parser:
@@ -337,7 +396,7 @@ def parse_transcript(filename):
         #print(contrib)
         #break
         if fp is not None:
-            per, created = Person.objects.get_or_create(
+            per, created = pmodels.Person.objects.get_or_create(
                 surname=fp.split('-')[-1],
                 first_name=fp.split('-')[0],
             )
@@ -346,20 +405,20 @@ def parse_transcript(filename):
             per.save()
             if per.party is None:
                 try:
-                    per.party=Party.objects.get(name=contrib['speaker_party'])
+                    per.party = pmodels.Party.objects.get(name=contrib['speaker_party'])
                     per.save()
                 except:
                     pass
         else:
-            print(contrib)
+            print("contribution: {}".format(contrib))
             continue
-        ut = Utterance(
+        ut = pmodels.Utterance(
             document=doc,
             speaker=per
         )
         ut.save()
         for par in contrib['pars']:
-            para = Paragraph(
+            para = pmodels.Paragraph(
                 utterance=ut,
                 text=par['text'],
                 word_count=len(par['text'].split()),
@@ -370,7 +429,7 @@ def parse_transcript(filename):
                 if ij.type is None:
                     print(ij.poitext)
                     continue
-                interjection = Interjection(
+                interjection = pmodels.Interjection(
                     paragraph=para,
                     text=ij.poitext,
                     type=ij.type
@@ -379,7 +438,7 @@ def parse_transcript(filename):
 
                 if ij.parties:
                     for party_name in ij.parties.split(':'):
-                        party, created = Party.objects.get_or_create(
+                        party, created = pmodels.Party.objects.get_or_create(
                             name=party_name
                         )
 
@@ -389,7 +448,7 @@ def parse_transcript(filename):
                         sc = clean_name(person)
                         fp = fingerprint(sc)
                         if fp is not None:
-                            per, created = Person.objects.get_or_create(
+                            per, created = pmodels.Person.objects.get_or_create(
                                 surname=fp.split('-')[-1],
                                 first_name=fp.split('-')[0],
                             )
@@ -406,20 +465,6 @@ def parse_transcript(filename):
         entries.append(contrib)
     # db_session.bulk_insert_mappings(Utterance, entries)
     # db_session.commit()
-    #print(entries)
-    #write_db(entries)
-
-    # q = '''SELECT * FROM de_bundestag_plpr WHERE wahlperiode = :w AND sitzung = :s
-    #         ORDER BY sequence ASC'''
-    # fcsv = os.path.basename(filename).replace('.txt', '.csv')
-    # rp = eng.query(q, w=wp, s=session)
-    # dataset.freeze(rp, filename=fcsv, prefix=OUT_DIR, format='csv')
-
-def write_db(data):
-    database = dataset.connect(db)
-    table = database['plpr']
-    for entry in data:
-        table.insert(entry)
 
 def clear_db():
     database = dataset.connect(db)
@@ -427,84 +472,48 @@ def clear_db():
     table.delete()
 
 
-
-def fetch_protokolle():
-    for d in TXT_DIR, OUT_DIR:
-        try:
-            os.makedirs(d)
-        except:
-            pass
-
-    urls = set()
-    res = requests.get(INDEX_URL)
-    doc = html.fromstring(res.content)
-    for a in doc.findall('.//a'):
-        url = urljoin(INDEX_URL, a.get('href'))
-        if url.endswith('.txt'):
-            urls.add(url)
-
-    for i in range(30, 260):
-        url = ARCHIVE_URL % i
-        urls.add(url)
-
-    new_urls = get_new_urls()
-    urls = urls.union(new_urls)
-    offset = 20
-    while len(new_urls) == 20:
-        new_urls = get_new_urls(offset)
-        urls = urls.union(new_urls)
-        offset += 20
-
-    for url in urls:
-        txt_file = os.path.join(TXT_DIR, os.path.basename(url))
-        txt_file = txt_file.replace('-data', '')
-        if os.path.exists(txt_file):
-            continue
-
-        r = requests.get(url)
-        if r.status_code < 300:
-            with open(txt_file, 'wb') as fh:
-                fh.write(r.content)
-
-            print(url, txt_file)
-
-
-def get_new_urls(offset=0):
-    base_url = "https://www.bundestag.de"
-    url = "https://www.bundestag.de/ajax/filterlist/de/dokumente/protokolle/plenarprotokolle/plenarprotokolle/-/455046/"
-    params = {"limit": 20,
-              "noFilterSet": "true",
-              "offset": offset
-              }
-    res = requests.get(url, params=params)
-    doc = html.fromstring(res.content)
-    return {urljoin(base_url, a.get('href')) for a in doc.findall('.//a')}
-
-
 if __name__ == '__main__':
-    #clear_db()
-    #fetch_protokolle()
-    #Parl.objects.all().delete()
-    #Document.objects.all().delete()
-    #Person.objects.all().delete()
-    pcolours = [
-        {'party':'cducsu','colour':'#000000'},
-        {'party':'spd','colour':'#EB001F'},
-        {'party':'linke','colour':'#8C3473'},
-        {'party':'fdp','colour':'#FFED00'},
-        {'party':'afd','colour':'#cducsu'},
-        {'party':'gruene','colour':'#64A12D'},
-    ]
-    for pc in pcolours:
-        p, created = Party.objects.get_or_create(name=pc['party'])
-        p.colour = pc['colour']
-        p.save()
 
+    delete_protokolle = True
+    add_party_colors = True
 
-    for filename in os.listdir(TXT_DIR):
-        if "18064.txt" in filename:
-            parse_transcript(os.path.join(TXT_DIR, filename))
-        #break
+    if delete_protokolle:
+        # pmodels.Parl.objects.all().delete()
+        pmodels.ParlSession.objects.all().delete()
+        pmodels.Document.objects.all().delete()
+        pmodels.Paragraph.objects.all().delete()
+        pmodels.Utterance.objects.all().delete()
+        pmodels.Interjection.objects.all().delete()
+        # Person.objects.all().delete()
 
-    for s in Search.objects.all():
-        do_search.delay(s.id)
+    if add_party_colors:
+        pcolours = [
+            {'party':'cducsu','colour':'#000000'},
+            {'party':'spd','colour':'#EB001F'},
+            {'party':'linke','colour':'#8C3473'},
+            {'party':'fdp','colour':'#FFED00'},
+            {'party':'afd','colour':'#cducsu'},
+            {'party':'gruene','colour':'#64A12D'},
+        ]
+        for pc in pcolours:
+            p, created = pmodels.Party.objects.get_or_create(name=pc['party'])
+            p.colour = pc['colour']
+            p.save()
+
+    verbosity = 1
+
+    print("starting parsing")
+    for collection in os.listdir(data_dir):
+        if collection.endswith(".zip"):
+            archive = zipfile.ZipFile(os.path.join(data_dir, collection), 'r')
+            print("loading files from {}".format(collection))
+            filelist = archive.infolist()
+            for zipitem in filelist[0:2]:
+                f = archive.open(zipitem)
+                parser_result = parse_transcript(f, verbosity=verbosity)
+
+            archive.close()
+
+    #for s in Search.objects.all():
+    #    do_search.delay(s.id)
+
