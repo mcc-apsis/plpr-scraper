@@ -4,7 +4,6 @@ import os, sys
 import django
 from django.conf import settings
 import re
-import logging
 import requests
 import dataset
 import datetime
@@ -12,7 +11,7 @@ from xml.etree import ElementTree
 from urllib.parse import urljoin
 # Extract agenda numbers not part of normdatei
 from normality import normalize
-from normdatei.text import clean_text, clean_name, fingerprint#, extract_agenda_numbers
+from normdatei.text import clean_text, clean_name, fingerprint  # , extract_agenda_numbers
 from normdatei.parties import search_party_names, PARTIES_REGEX
 from sqlalchemy import create_engine, Column, Integer, String, Boolean
 from sqlalchemy.ext.declarative import declarative_base
@@ -42,9 +41,8 @@ import parliament.models as pmodels
 from parliament.tasks import do_search
 import cities.models as cmodels
 
-log = logging.getLogger(__name__)
-
-DATE=re.compile('\w*,\s*(Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag),\s*\w*\s*([0-9]*)\.\s*(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember) ([0-9]{4})')
+DATE = re.compile('\w*,\s*(Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag),( den)*\s*(\d{1,2})\.\s*'
+                  '(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember) (\d{4})')
 D_MONTHS = {
     'Januar':1,
     'Februar':2,
@@ -71,9 +69,14 @@ SPEAKER_STOPWORDS = ['ich zitiere', 'zitieren', 'Zitat', 'zitiert',
                      'fordert', 'fordern', u'Ich möchte',
                      'Darin steht', ' Aspekte ', ' Punkte ', 'Berichtszeitraum']
 
-BEGIN_MARK = re.compile('Beginn:? [X\d]{1,2}.\d{1,2} Uhr')
+BEGIN_MARK = re.compile('Beginn:? [X\d]{1,2}[.:]\d{1,2} Uhr|.*?Beginn:\s*\d{1,2}\s?[.,:]\s?\d{1,2}|Beginn:\s*\d{1,2} Uhr|'
+                        'Beginn\s\d{1,2}\s*\.\s*\d{0,2}\sUhr|.*?Die Sitzung wird (um|urn) \d{1,2}[.:]*\d{0,2}\sUhr\s.*?(eröffnet|eingeleitet)')
+INCOMPLETE_BEGIN_MARK = re.compile('.*?Die Sitzung wird um \d{1,2} Uhr|Beginn?:')
+
+# \d -> numerical digit, {1,2} -> one or two times
 END_MARK = re.compile('(\(Schluss:.\d{1,2}.\d{1,2}.Uhr\).*|\(*Schluss der Sitzung)|Die Sitzung ist geschlossen')
 
+HEADER_MARK = re.compile('')
 
 ANY_PARTY = re.compile('({})'.format('|'.join([x.pattern.strip() for x in PARTIES_REGEX.values()])))
 
@@ -89,6 +92,7 @@ BEAUFTRAGT = re.compile('\s*(.{5,140}, Beauftragter? der Bundes.*):\s*$')
 
 TOP_MARK = re.compile('.*(?: rufe.*der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt)(.*)')
 POI_MARK = re.compile('\((.*)\)\s*$', re.M)
+# re.M is short for re.MULITLINE
 WRITING_BEGIN = re.compile('.*werden die Reden zu Protokoll genommen.*')
 WRITING_END = re.compile(u'(^Tagesordnungspunkt .*:\s*$|– Drucksache d{2}/\d{2,6} –.*|^Ich schließe die Aussprache.$)')
 
@@ -96,26 +100,27 @@ ABG = 'Abg\.\s*(.*?)(\[[\wäöüßÄÖÜ /]*\])'
 
 pp = pprint.PrettyPrinter(indent=4)
 
-# engine = create_engine(db)
-# Base = declarative_base()
-# Base.metadata.create_all(engine)
-# Session = sessionmaker(bind=engine)
-# db_session = Session()
+# ============================================================
+# write output to file and terminal
 
+time_stamp = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+output_file = "./parlsessions_parser_output_" + time_stamp + ".log"
 
-# class Utterance(Base):
-#     __tablename__ = "de_bundestag_plpr"
-#
-#     id = Column(Integer, primary_key=True)
-#     wahlperiode = Column(Integer)
-#     sitzung = Column(Integer)
-#     sequence = Column(Integer)
-#     speaker_cleaned = Column(String)
-#     speaker_party = Column(String)
-#     speaker = Column(String)
-#     speaker_fp = Column(String)
-#     type = Column(String)
-#     text = Column(String)
+class Logger(object):
+    def __init__(self):
+        self.terminal = sys.stdout
+        self.log = open(output_file, "a")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+
+    def flush(self):
+        #this flush method is needed for python 3 compatibility.
+        #this handles the flush command by doing nothing.
+        #you might want to specify some extra behavior here.
+        pass
+
 
 # interjections
 class POI(object):
@@ -164,12 +169,22 @@ class SpeechParser(object):
     def get_date(self):
         for line in self.lines:
             if DATE.match(line):
-                d = int(DATE.match(line).group(2))
-                m = int(D_MONTHS[DATE.match(line).group(3)])
-                y = int(DATE.match(line).group(4))
-                date = datetime.date(y,m,d)
-                self.date = date
-                return
+                try:
+                    d = int(DATE.match(line).group(3))
+                    m = int(D_MONTHS[DATE.match(line).group(4)])
+                    y = int(DATE.match(line).group(5))
+                    date = datetime.date(y, m, d)
+                    self.date = date
+                    return
+
+                except ValueError:
+                    print("date from manuscript not readable: {}".format(DATE.match(line)))
+                    print("group 1: {}".format(DATE.match(line).group(1)))
+                    print("group 2: {}".format(DATE.match(line).group(2)))
+                    print("group 3: {}".format(DATE.match(line).group(3)))
+                    print("group 4: {}".format(DATE.match(line).group(4)))
+                    print("group 5: {}".format(DATE.match(line).group(5)))
+                    raise ValueError
 
     def parse_pois(self, group):
 
@@ -206,16 +221,24 @@ class SpeechParser(object):
             }
 
         for line in self.lines:
+            if verbosity > 1:
+                print("l: " + line)
             rline = line.strip()
 
             # Check if in session, session beginning, session ending
             if not self.in_session and BEGIN_MARK.match(line):
+                print("Matched begin mark: {}".format(line))
                 self.in_session = True
                 continue
+            if not self.in_session and INCOMPLETE_BEGIN_MARK.match(line):
+                print("Warning: Matched only incomplete begin mark: {}".format(line))
+                self.in_session = True
+
             elif not self.in_session:
                 continue
 
             if END_MARK.match(rline):
+                print("Matched end mark: {}".format(rline))
                 return
 
             if not len(rline):
@@ -223,6 +246,7 @@ class SpeechParser(object):
 
             is_top = False
             if TOP_MARK.match(line):
+                print("matched top mark: {}".format(line))
                 is_top = True
 
             has_stopword = False
@@ -230,7 +254,6 @@ class SpeechParser(object):
                 if sw.lower() in line.lower():
                     has_stopword = True
 
-            nline = normalize(line)
             noparty = False
             speaker_match = (PRESIDENT.match(line) or
                              PARTY_MEMBER.match(line) or
@@ -243,7 +266,7 @@ class SpeechParser(object):
 
             if PARTY_MEMBER.match(line):
                 if not ANY_PARTY.match(normalize(PARTY_MEMBER.match(line).group(2))):
-                    noparty=True
+                    noparty = True
             if speaker_match is not None \
                     and not is_top \
                     and not noparty \
@@ -269,21 +292,23 @@ class SpeechParser(object):
 
             poi_match = POI_MARK.match(rline)
             if poi_match is not None:
-                print("paragraph: {}".format(self.text))
-                # if not poi_match.group(1).lower().strip().startswith('siehe'):
-                #yield emit()
                 par = {
                     'text': "\n".join(self.text).strip(),
                     'pois': []
                 }
-                #self.text = []
                 for poi in self.parse_pois(poi_match.group(1)):
                     par['pois'].append(poi)
+                    print("interjection: speakers: {}, party: {}, type: {},"
+                          "\ntext: {}".format(poi.speakers, poi.parties, poi.type, poi.poitext))
+
                 self.pars.append(par)
                 self.text = []
-                continue
 
+                continue
             self.text.append(rline)
+
+        print("reached end of file\nBeginning of document:")
+        print(self.lines[:500])
         yield emit()
 
 
@@ -320,6 +345,7 @@ def parse_transcript(file, verbosity=1):
         filename = file
         wp, session = file_metadata(filename)
 
+    # open file in zip archive
     elif isinstance(file, zipfile.ZipExtFile):
         text = file.read()
         filename = file.name
@@ -333,7 +359,7 @@ def parse_transcript(file, verbosity=1):
                 print("root: {}, attributes: {}".format(root.tag, root.attrib))
                 for child in root:
                     print("child: {}, attributes: {}".format(child.tag, child.attrib))
-                    print(child.text[:100])
+                    print("beginning of text: {}".format(child.text[:100]))
 
             wp = root.find("WAHLPERIODE").text
             document_type = root.find("DOKUMENTART").text
@@ -360,14 +386,19 @@ def parse_transcript(file, verbosity=1):
 
     print("Parsing transcript: {}/{}, from {}".format(wp, session, filename))
     seq = 0
+    utterance_counter = 0
+    paragraph_counter = 0
+    interjection_counter = 0
+
+    # start parsing
     parser = SpeechParser(text.split('\n'))
     # get_date is not working for all documents
     parser.get_date()
-    if parser.date != german_date(date):
-        print("Warning: dates do not match")
-        print(parser.date)
-        print(german_date(date))
-    # print("text: {}".format(text[:1000]))
+    if isinstance(file, zipfile.ZipExtFile):
+        if parser.date != german_date(date):
+            print("Warning: dates do not match")
+            print(parser.date)
+            print(german_date(date))
 
     parl, created = pmodels.Parl.objects.get_or_create(
         country=cmodels.Country.objects.get(name="Germany"),
@@ -382,41 +413,51 @@ def parse_transcript(file, verbosity=1):
         doc_type="plenarprotokolle",
         date=german_date(date)
     )
-    doc.sitting=session
+    doc.sitting = session
     doc.save()
 
     doc.utterance_set.all().delete()
 
     entries = []
+
+    # parser.__iter__ yields dict with paragraphs + speaker + speaker_party
     for contrib in parser:
+
+        # update dictionary
         contrib.update(base_data)
         sc = clean_name(contrib['speaker'])
 
+        # fingerprint function from normdatei.text
         fp = fingerprint(sc)
-        #print(contrib)
-        #break
+
         if fp is not None:
             per, created = pmodels.Person.objects.get_or_create(
                 surname=fp.split('-')[-1],
                 first_name=fp.split('-')[0],
             )
             per.clean_name = sc
-            #print(sc)
+            if created:
+                print("created person: {}".format(sc))
             per.save()
+
             if per.party is None:
                 try:
                     per.party = pmodels.Party.objects.get(name=contrib['speaker_party'])
                     per.save()
-                except:
+                except pmodels.Party.DoesNotExist:
+                    print("Warning: Did not find party: {}".format(contrib['speaker_party']))
                     pass
         else:
-            print("contribution: {}".format(contrib))
+            print("fingerprint of speaker is None, not saving the following contribution: {}".format(contrib))
             continue
+
         ut = pmodels.Utterance(
             document=doc,
             speaker=per
         )
         ut.save()
+        utterance_counter += 1
+
         for par in contrib['pars']:
             para = pmodels.Paragraph(
                 utterance=ut,
@@ -425,9 +466,11 @@ def parse_transcript(file, verbosity=1):
                 char_len=len(par['text'])
             )
             para.save()
+            paragraph_counter += 1
+
             for ij in par['pois']:
                 if ij.type is None:
-                    print(ij.poitext)
+                    print("interjection type not identified: {}".format(ij.poitext))
                     continue
                 interjection = pmodels.Interjection(
                     paragraph=para,
@@ -435,6 +478,7 @@ def parse_transcript(file, verbosity=1):
                     type=ij.type
                 )
                 interjection.save()
+                interjection_counter += 1
 
                 if ij.parties:
                     for party_name in ij.parties.split(':'):
@@ -453,9 +497,10 @@ def parse_transcript(file, verbosity=1):
                                 first_name=fp.split('-')[0],
                             )
                             per.clean_name = sc
+                            if created:
+                                print("created person: {}".format(sc))
                             per.save()
                             interjection.persons.add(per)
-
 
         contrib['sequence'] = seq
 
@@ -463,8 +508,22 @@ def parse_transcript(file, verbosity=1):
         contrib['speaker_party'] = search_party_names(contrib['speaker'])
         seq += 1
         entries.append(contrib)
-    # db_session.bulk_insert_mappings(Utterance, entries)
-    # db_session.commit()
+        if verbosity > 0:
+            print("contribution: {}".format(contrib))
+
+    if not parser.in_session:
+        print("Warning: beginning of session not found")
+        return 1
+
+    print("==================================================")
+    print("parsing text from {} done.\nSummary:".format(filename))
+    print("number of utterances: {}".format(utterance_counter))
+    print("number of paragraphs: {}".format(paragraph_counter))
+    print("number of interjections: {}".format(interjection_counter))
+    print("==================================================\n")
+
+    return 0
+
 
 def clear_db():
     database = dataset.connect(db)
@@ -472,7 +531,10 @@ def clear_db():
     table.delete()
 
 
+# main execution script
 if __name__ == '__main__':
+
+    sys.stdout = Logger()
 
     delete_protokolle = True
     add_party_colors = True
@@ -501,6 +563,8 @@ if __name__ == '__main__':
             p.save()
 
     verbosity = 1
+    document_counter = 0
+    count_errors = 0
 
     print("starting parsing")
     for collection in os.listdir(data_dir):
@@ -508,11 +572,16 @@ if __name__ == '__main__':
             archive = zipfile.ZipFile(os.path.join(data_dir, collection), 'r')
             print("loading files from {}".format(collection))
             filelist = archive.infolist()
-            for zipitem in filelist[0:2]:
+            for zipitem in filelist[:2]:
                 f = archive.open(zipitem)
                 parser_result = parse_transcript(f, verbosity=verbosity)
+                count_errors += parser_result
+                document_counter += 1
 
             archive.close()
+
+    print("Parsed {} documents.".format(document_counter))
+    print("Documents with errors: {}".format(count_errors))
 
     #for s in Search.objects.all():
     #    do_search.delay(s.id)
