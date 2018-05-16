@@ -274,19 +274,24 @@ def parse_mdb_data(verbosity=0):
 
         person.save()
 
+        wp_list = []
+
         # loop over wahlperioden
         for wp in mdb.findall('WAHLPERIODEN/WAHLPERIODE'):
 
-            # do not scrape seats of the Volkskammer
+            wp_list.append(int(wp.find('WP').text))
+
+            # do not use seats of the Volkskammer
             if wp.find('MANDATSART').text == "Volkskammer":
                 continue
 
-            ps, created = ParlSession.objects.get_or_create(
+            pp, created = ParlPeriod.objects.get_or_create(
                 parliament=parl,
                 n=wp.find('WP').text
                 )
+
             seat, created = Seat.objects.get_or_create(
-                parlsession=ps,
+                parlperiod=pp,
                 occupant=person
                 )
             seat.start_date = german_date(wp.find('MDBWP_VON').text)
@@ -324,7 +329,9 @@ def parse_mdb_data(verbosity=0):
                         name=wp.find('WKR_NAME').text,
                         region=Region.objects.get(name=LANDS[direct_region])
                         )
+                    wk.save()
                     seat.constituency = wk
+                    seat.save()
                 except KeyError:
                     print("Warning: Region of Direktmandat not found: {}".format(direct_region))
                     warn += 1
@@ -337,9 +344,12 @@ def parse_mdb_data(verbosity=0):
                 list_region = wp.find('LISTE').text
                 try:
                     pl, created = PartyList.objects.get_or_create(
-                        parlsession=ps,
+                        parlperiod=pp,
                         region=Region.objects.get(name=LANDS[list_region])
                         )
+                    seat.list = pl
+                    seat.save()
+                    pl.save()
                 except KeyError:
                     print("Warning: Region of Landesliste not found: {}".format(list_region))
                     warn += 1
@@ -349,6 +359,9 @@ def parse_mdb_data(verbosity=0):
 
             else:
                 print("Warning: Unknown Mandatsart: {}".format(wp.find('MANDATSART').text))
+
+        person.in_parlperiod = wp_list
+        person.save()
 
     print("Done. {} warnings.".format(warn))
 

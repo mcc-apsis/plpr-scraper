@@ -37,11 +37,28 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "BasicBrowser.settings")
 django.setup()
 
 # import from appended path
-import parliament.models as pmodels
+import parliament.models as pm
 from parliament.tasks import do_search
 import cities.models as cmodels
 
-DATE = re.compile('\w*,\s*(Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag),( den)*\s*(\d{1,2})\.\s*'
+# regex notes:
+# ? zero or one occurance
+# * zero or more occurances
+# + one or more occurances
+# {n} n occurances
+# {n, } n or more occurrances
+# {n, m} n to m occurrances
+# (?:x) -> non capturing group
+# (?<=x) lookbehind
+
+# ? can also be used to change the default greedy behavior (take as many characters as possible) into a lazy one:
+# e.g. (.*?) applied to (a) (b) will return (a), not (a) (b)
+
+# \d -> numerical digit
+# re.M is short for re.MULITLINE
+
+
+DATE = re.compile('\w*,\s*(Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag),(?:\sden)?\s*(\d{1,2})\.\s*'
                   '(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember) (\d{4})')
 D_MONTHS = {
     'Januar':1,
@@ -73,38 +90,59 @@ BEGIN_MARK = re.compile('Beginn:? [X\d]{1,2}[.:]\d{1,2} Uhr|.*?Beginn:\s*\d{1,2}
                         'Beginn\s\d{1,2}\s*\.\s*\d{0,2}\sUhr|.*?Die Sitzung wird (um|urn) \d{1,2}[.:]*\d{0,2}\sUhr\s.*?(eröffnet|eingeleitet)')
 INCOMPLETE_BEGIN_MARK = re.compile('.*?Die Sitzung wird um \d{1,2} Uhr|Beginn?:')
 
-# \d -> numerical digit, {1,2} -> one or two times
+DISRUPTION_MARK = re.compile('^\s*Unterbrechung von [0-9.:]* bis [0-9.:]* Uhr|'
+                             'Namensaufruf und Wahl')
+
 END_MARK = re.compile('(\(Schluss:.\d{1,2}.\d{1,2}.Uhr\).*|\(*Schluss der Sitzung)|Die Sitzung ist geschlossen')
 
-HEADER_MARK = re.compile('')
+HEADER_MARK = re.compile('\d{1,6}?\s*Deutscher Bundestag\s*[–\-]\s*\d{1,2}\.\s*Wahlperiode\s*[–\-]\s*\d{1,4}\. Sitzung.\s*(Bonn|Berlin),'
+                         '|\s*\([A-Z]\)(\s*\([A-Z]\))*\s*$|\d{1,6}\s*$|^\s*\([A-Z]\)\s\)$|^\s*\([A-Z]$|^\s*[A-Z]\)$')
 
 ANY_PARTY = re.compile('({})'.format('|'.join([x.pattern.strip() for x in PARTIES_REGEX.values()])))
 
-# speaker types
-PARTY_MEMBER = re.compile('\s*(.{5,140}\((.*)\)):\s*$')
-PRESIDENT = re.compile('\s*((Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?).{5,140}):\s*$')
-STAATSSEKR = re.compile('\s*(.{5,140}, Parl\. Staatssekretär.*):\s*$')
-STAATSMINISTER = re.compile('\s*(.{5,140}, Staatsminister.*):\s*$')
-MINISTER = re.compile('\s*(.{5,140}, Bundesminister.*):\s*$')
-WEHRBEAUFTRAGTER = re.compile('\s*(.{5,140}, Wehrbeauftragter.*):\s*$')
-BUNDESKANZLER = re.compile('\s*(.{5,140}, Bundeskanzler.*):\s*$')
-BEAUFTRAGT = re.compile('\s*(.{5,140}, Beauftragter? der Bundes.*):\s*$')
+# speaker type matches
+PARTY_MEMBER = re.compile('\s*(.{4,140}?\((.*)\)):\s*')
+PRESIDENT = re.compile('\s*((Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?).{5,140}?):\s*')
+STAATSSEKR = re.compile('\s*(.{4,140}?, Parl\. Staatssekretär.*?):\s*')
+STAATSMINISTER = re.compile('\s*(.{4,140}?, Staatsminister.*?):\s*')
+MINISTER = re.compile('\s*(.{4,140}?, Bundesminister.*?):\s*')
+WEHRBEAUFTRAGTER = re.compile('\s*(.{4,140}?, Wehrbeauftragter.*?):\s*')
+BUNDESKANZLER = re.compile('\s*(.{4,140}?, Bundeskanzler(in)?.*?):\s*')
+BEAUFTRAGT = re.compile('\s*(.{4,140}?, Beauftragter? der Bundes.*):\s*')
+BERICHTERSTATTER = re.compile('\s*(.{4,140}?, Berichterstatter(in)?.*?):\s*')
+
+PERSON_POSITION = ['Vizepräsident(in)?', 'Präsident(in)?',
+                   'Alterspräsident(in)?', 'Bundeskanzler(in)?',
+                   'Staatsminister(in)?', '(?<=,\s)Bundesminister(in)? (für)? .*$',
+                   'Parl. Staatssekretär(in)?', '(?<=,\s)Berichterstatter(in)?']
+PERSON_POSITION = re.compile(u'(%s)' % '|'.join(PERSON_POSITION), re.U)
+
+NAME_REMOVE = [u'\\[.*\\]|\\(.*\\)', u' de[sr]', u'Ge ?genruf', 'Weiterer Zuruf', 'Zuruf', 'Weiterer',
+               u', zur.*', u', auf die', u' an die', u', an .*', u'gewandt', 'Liedvortrag']
+NAME_REMOVE = re.compile(u'(%s)' % '|'.join(NAME_REMOVE), re.U)
+
+PERSON_PARTY = re.compile('\s*(.{4,140})\s\((.*)\)$')
 
 TOP_MARK = re.compile('.*(?: rufe.*der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt)(.*)')
 POI_MARK = re.compile('\((.*)\)\s*$', re.M)
-# re.M is short for re.MULITLINE
 WRITING_BEGIN = re.compile('.*werden die Reden zu Protokoll genommen.*')
 WRITING_END = re.compile(u'(^Tagesordnungspunkt .*:\s*$|– Drucksache d{2}/\d{2,6} –.*|^Ich schließe die Aussprache.$)')
 
 ABG = 'Abg\.\s*(.*?)(\[[\wäöüßÄÖÜ /]*\])'
+DEHYPHENATE = re.compile('(?<=[A-Za-z])(-\s*)\n', re.M)
+INHYPHEN = re.compile(r'([a-z])-([a-z])', re.U)
 
-pp = pprint.PrettyPrinter(indent=4)
+# ABBREVIATED = re.compile('[A-Z]\.')
+TITLE = re.compile('[A-Z]?\.?\s*Dr.|Dr. h.c.| Prof. Dr.')
+
+pretty_printer = pprint.PrettyPrinter(indent=4)
 
 # ============================================================
 # write output to file and terminal
 
 time_stamp = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
 output_file = "./parlsessions_parser_output_" + time_stamp + ".log"
+
 
 class Logger(object):
     def __init__(self):
@@ -122,7 +160,7 @@ class Logger(object):
         pass
 
 
-# interjections
+# interjections (poi = point of interjection?)
 class POI(object):
     def __init__(self,text):
         self.poitext = text
@@ -141,38 +179,40 @@ class POI(object):
             else:
                 self.parties = search_party_names(text)
             self.poitext = sinfo[1].strip()
-            self.type = pmodels.Interjection.SPEECH
+            self.type = pm.Interjection.SPEECH
         elif "Beifall" in text:
             self.parties = search_party_names(text)
-            self.type = pmodels.Interjection.APPLAUSE
+            self.type = pm.Interjection.APPLAUSE
         elif "Widerspruch" in text:
             self.parties = search_party_names(text)
-            self.type = pmodels.Interjection.OBJECTION
+            self.type = pm.Interjection.OBJECTION
         elif "Heiterkeit" in text:
             self.parties = search_party_names(text)
-            self.type = pmodels.Interjection.AMUSEMENT
+            self.type = pm.Interjection.AMUSEMENT
         elif "Lachen" in text:
             self.parties = search_party_names(text)
-            self.type = pmodels.Interjection.LAUGHTER
+            self.type = pm.Interjection.LAUGHTER
         elif "Zuruf" in text:
             self.parties = search_party_names(text)
-            self.type = pmodels.Interjection.OUTCRY
+            self.type = pm.Interjection.OUTCRY
 
 
 class SpeechParser(object):
 
-    def __init__(self, lines):
+    def __init__(self, lines, verbosity=0):
         self.lines = lines
+        self.line_number = 0
         self.was_chair = True
         self.date = None
+        self.verbosity = verbosity
 
     def get_date(self):
         for line in self.lines:
             if DATE.match(line):
                 try:
-                    d = int(DATE.match(line).group(3))
-                    m = int(D_MONTHS[DATE.match(line).group(4)])
-                    y = int(DATE.match(line).group(5))
+                    d = int(DATE.match(line).group(2))
+                    m = int(D_MONTHS[DATE.match(line).group(3)])
+                    y = int(DATE.match(line).group(4))
                     date = datetime.date(y, m, d)
                     self.date = date
                     return
@@ -183,7 +223,6 @@ class SpeechParser(object):
                     print("group 2: {}".format(DATE.match(line).group(2)))
                     print("group 3: {}".format(DATE.match(line).group(3)))
                     print("group 4: {}".format(DATE.match(line).group(4)))
-                    print("group 5: {}".format(DATE.match(line).group(5)))
                     raise ValueError
 
     def parse_pois(self, group):
@@ -194,6 +233,7 @@ class SpeechParser(object):
 
     def __iter__(self):
         self.in_session = False
+        self.in_header = False
         self.chair = False
         self.text = []
         self.pars = []
@@ -210,6 +250,8 @@ class SpeechParser(object):
             self.was_chair = self.chair
             self.text = []
             self.pars = []
+            if self.verbosity > 1:
+                print("utterance: {}".format(data))
             return data
 
         def emit_poi(speaker, text):
@@ -221,6 +263,7 @@ class SpeechParser(object):
             }
 
         for line in self.lines:
+            self.line_number += 1
             if verbosity > 1:
                 print("l: " + line)
             rline = line.strip()
@@ -231,22 +274,44 @@ class SpeechParser(object):
                 self.in_session = True
                 continue
             if not self.in_session and INCOMPLETE_BEGIN_MARK.match(line):
-                print("Warning: Matched only incomplete begin mark: {}".format(line))
+                print("Warning at line {}: Matched only incomplete begin mark: {}".format(self.line_number, line))
                 self.in_session = True
 
             elif not self.in_session:
+                continue
+
+            if DISRUPTION_MARK.match(rline):
                 continue
 
             if END_MARK.match(rline):
                 print("Matched end mark: {}".format(rline))
                 return
 
+            # empty line
             if not len(rline):
+                if self.verbosity > 1:
+                    print("Empty line")
                 continue
 
+            header_match = HEADER_MARK.match(line)
+            if header_match is not None:
+                print("matched header: ", line)
+                self.in_header = True
+                continue
+
+            if self.in_header and self.speaker is not None:
+                print("speaker: {}".format(self.speaker))
+                if line.startswith(self.speaker):
+                    print("header: {}".format(line))
+                    continue
+                else:
+                    print(line)
+                    self.in_header = False
+
             is_top = False
+            # new point on the agenda (top - tagesordnungspunkt)
             if TOP_MARK.match(line):
-                print("matched top mark: {}".format(line))
+                print("Matched top mark: {}".format(line))
                 is_top = True
 
             has_stopword = False
@@ -262,7 +327,11 @@ class SpeechParser(object):
                              WEHRBEAUFTRAGTER.match(line) or
                              BUNDESKANZLER.match(line) or
                              BEAUFTRAGT.match(line) or
-                             MINISTER.match(line))
+                             MINISTER.match(line) or
+                             BERICHTERSTATTER.match(line))
+
+            if speaker_match is not None:
+                print("matched speaker at line {}: {}".format(self.line_number, speaker_match))
 
             if PARTY_MEMBER.match(line):
                 if not ANY_PARTY.match(normalize(PARTY_MEMBER.match(line).group(2))):
@@ -272,12 +341,20 @@ class SpeechParser(object):
                     and not noparty \
                     and not has_stopword:
 
-                if self.speaker is None and self.text ==[] and self.pars==[]:
+                if self.speaker is None and self.text == [] and self.pars == []:
                     self.text = []
                 else:
                     if len(self.pars) < 1:
+                        print(self.text)
+
+                        text = '\n'.join(self.text)
+                        text = DEHYPHENATE.sub('', text)
+                        text = text.replace('\n', ' ')
+
+                        print(text)
+
                         par = {
-                            'text': "\n".join(self.text).strip(),
+                            'text': text,
                             # default for strip: removing leading and ending white space
                             'pois': []
                         }
@@ -298,8 +375,9 @@ class SpeechParser(object):
                 }
                 for poi in self.parse_pois(poi_match.group(1)):
                     par['pois'].append(poi)
-                    print("interjection: speakers: {}, party: {}, type: {},"
-                          "\ntext: {}".format(poi.speakers, poi.parties, poi.type, poi.poitext))
+                    if self.verbosity > 0:
+                        print("interjection: speakers: {}, party: {}, type: {},"
+                              "\ninterjection text: {}".format(poi.speakers, poi.parties, poi.type, poi.poitext))
 
                 self.pars.append(par)
                 self.text = []
@@ -307,8 +385,8 @@ class SpeechParser(object):
                 continue
             self.text.append(rline)
 
-        print("reached end of file\nBeginning of document:")
-        print(self.lines[:500])
+        print("Reached end of file")
+        # print(self.lines[:500])
         yield emit()
 
 
@@ -369,7 +447,7 @@ def parse_transcript(file, verbosity=1):
             session = number.split("/")[1]
             date = root.find("DATUM").text
             titel = root.find("TITEL").text
-            text = root.find("TEXT").text
+            text = clean_text(root.find("TEXT").text)
         else:
             print("filetype not xml")
             return 0
@@ -391,7 +469,7 @@ def parse_transcript(file, verbosity=1):
     interjection_counter = 0
 
     # start parsing
-    parser = SpeechParser(text.split('\n'))
+    parser = SpeechParser(text.split('\n'), verbosity=verbosity)
     # get_date is not working for all documents
     parser.get_date()
     if isinstance(file, zipfile.ZipExtFile):
@@ -400,19 +478,27 @@ def parse_transcript(file, verbosity=1):
             print(parser.date)
             print(german_date(date))
 
-    parl, created = pmodels.Parl.objects.get_or_create(
+    parl, created = pm.Parl.objects.get_or_create(
         country=cmodels.Country.objects.get(name="Germany"),
         level='N'
     )
-    ps, created = pmodels.ParlSession.objects.get_or_create(
+    if created:
+        print("created new object for parliament")
+
+    pp, created = pm.ParlPeriod.objects.get_or_create(
         parliament=parl,
         n=wp
     )
-    doc, created = pmodels.Document.objects.get_or_create(
-        parlsession=ps,
+    if created:
+        print("created new object for legislative period")
+
+    doc, created = pm.Document.objects.get_or_create(
+        parlperiod=pp,
         doc_type="plenarprotokolle",
         date=german_date(date)
     )
+    if created:
+        print("created new object for plenary session document")
     doc.sitting = session
     doc.save()
 
@@ -420,38 +506,23 @@ def parse_transcript(file, verbosity=1):
 
     entries = []
 
-    # parser.__iter__ yields dict with paragraphs + speaker + speaker_party
+    # parser.__iter__ yields dict with paragraphs + speaker + speaker_party + interjections (poi)
     for contrib in parser:
 
         # update dictionary
         contrib.update(base_data)
-        sc = clean_name(contrib['speaker'])
 
-        # fingerprint function from normdatei.text
-        fp = fingerprint(sc)
-
-        if fp is not None:
-            per, created = pmodels.Person.objects.get_or_create(
-                surname=fp.split('-')[-1],
-                first_name=fp.split('-')[0],
-            )
-            per.clean_name = sc
-            if created:
-                print("created person: {}".format(sc))
-            per.save()
-
-            if per.party is None:
-                try:
-                    per.party = pmodels.Party.objects.get(name=contrib['speaker_party'])
-                    per.save()
-                except pmodels.Party.DoesNotExist:
-                    print("Warning: Did not find party: {}".format(contrib['speaker_party']))
-                    pass
+        if contrib['speaker']:
+            per = match_person_in_db(contrib['speaker'], wp)
         else:
-            print("fingerprint of speaker is None, not saving the following contribution: {}".format(contrib))
+            print("No speaker given, not saving the following contribution: {}".format(contrib))
             continue
 
-        ut = pmodels.Utterance(
+        if per is None:
+            print("Not able to match person, not saving the following contribution: {}".format(contrib))
+            continue
+
+        ut = pm.Utterance(
             document=doc,
             speaker=per
         )
@@ -459,20 +530,27 @@ def parse_transcript(file, verbosity=1):
         utterance_counter += 1
 
         for par in contrib['pars']:
-            para = pmodels.Paragraph(
-                utterance=ut,
-                text=par['text'],
-                word_count=len(par['text'].split()),
-                char_len=len(par['text'])
-            )
-            para.save()
-            paragraph_counter += 1
+
+            if par['text']:
+                para = pm.Paragraph(
+                    utterance=ut,
+                    text=par['text'],
+                    word_count=len(par['text'].split()),
+                    char_len=len(par['text'])
+                )
+                para.save()
+                paragraph_counter += 1
+            else:
+                print("Warning: Empty paragraph ({})".format(par))
+                for ij in par['pois']:
+                    print(ij.poitext)
+                continue
 
             for ij in par['pois']:
                 if ij.type is None:
                     print("interjection type not identified: {}".format(ij.poitext))
                     continue
-                interjection = pmodels.Interjection(
+                interjection = pm.Interjection(
                     paragraph=para,
                     text=ij.poitext,
                     type=ij.type
@@ -482,29 +560,20 @@ def parse_transcript(file, verbosity=1):
 
                 if ij.parties:
                     for party_name in ij.parties.split(':'):
-                        party, created = pmodels.Party.objects.get_or_create(
+                        party, created = pm.Party.objects.get_or_create(
                             name=party_name
                         )
 
                         interjection.parties.add(party)
                 if ij.speakers:
                     for person in ij.speakers:
-                        sc = clean_name(person)
-                        fp = fingerprint(sc)
-                        if fp is not None:
-                            per, created = pmodels.Person.objects.get_or_create(
-                                surname=fp.split('-')[-1],
-                                first_name=fp.split('-')[0],
-                            )
-                            per.clean_name = sc
-                            if created:
-                                print("created person: {}".format(sc))
-                            per.save()
+                        per = match_person_in_db(contrib['speaker'], wp)
+                        if per is not None:
                             interjection.persons.add(per)
 
         contrib['sequence'] = seq
 
-        contrib['speaker_fp'] = fingerprint(sc)
+        contrib['speaker_fp'] = fingerprint(contrib['speaker'])
         contrib['speaker_party'] = search_party_names(contrib['speaker'])
         seq += 1
         entries.append(contrib)
@@ -522,13 +591,100 @@ def parse_transcript(file, verbosity=1):
     print("number of interjections: {}".format(interjection_counter))
     print("==================================================\n")
 
-    return 0
+    if utterance_counter <= 0:
+        return 1
+    else:
+        return 0
+
+# ==========================================================================================================
+# ==========================================================================================================
+
+
+def match_person_in_db(name, wp):
+
+    name = INHYPHEN.sub(r'\1\2', name)
+
+    position = PERSON_POSITION.search(name)
+    if position:
+        print("=position: {}".format(position.group(0)))
+
+        position = position.group(0)
+    cname = PERSON_POSITION.sub('', name).strip(' ,')
+
+    title = TITLE.match(cname)
+    if title:
+        title = title.group(0)
+    cname = TITLE.sub('', cname).strip()
+
+    party = PERSON_PARTY.match(cname)
+    if party:
+        party = party.group(2)
+    cname = PERSON_PARTY.sub(r'\1', cname)
+
+    ortszusatz = PERSON_PARTY.match(cname)
+    if ortszusatz:
+        ortszusatz = ortszusatz.group(2)
+    cname = PERSON_PARTY.sub(r'\1', cname)
+
+    cname = cname.strip('-').strip()  # remove beginning and tailing "-" and white space
+
+    if len(cname.split(' ')) > 1:
+        surname = cname.split(' ')[-1]
+        firstname = cname.split(' ')[0]
+    else:
+        surname = cname
+        firstname = ''
+
+    query = pm.Person.objects.filter(
+        surname=surname,
+        in_parlperiod__contains=[wp])
+
+    if len(query) == 1:
+        print("matched person in db: {}".format(name))
+        return query.first()
+
+    elif len(query) > 1:
+        print("Found multiple persons in query")
+        print(query)
+
+        if firstname:
+            query = query.filter(first_name=firstname)
+            if len(query) == 1:
+                print("ambiguity resolved")
+                return query.first()
+
+        if party:
+            query = query.filter(party__alt_names__contains=[party])
+            if len(query) == 1:
+                print("ambiguity resolved")
+                return query.first()
+
+        # person, created = pm.Person.objects.get_or_create(surname='Unmatched', first_name='Unmatched')
+
+        print("Warning: Could not distinguish between persons!")
+        print("name: {}".format(name))
+        print("first name: {}, surname: {}".format(firstname, surname))
+        print("title: {}, party: {}, position: {}, ortszusatz: {}".format(title, party, position, ortszusatz))
+        return None
+
+    else:
+        print("Warning: person not found in database: {}".format(cname))
+        print("name: {}".format(name))
+        print("first name: {}, surname: {}".format(firstname, surname))
+        print("title: {}, party: {}, position: {}, ortszusatz: {}".format(title, party, position, ortszusatz))
+        print("query: {}".format(query))
+
+        # person, created = pm.Person.objects.get_or_create(surname='Unmatched', first_name='Unmatched')
+        return None
 
 
 def clear_db():
     database = dataset.connect(db)
     table = database['plpr']
     table.delete()
+
+# =================================================================================================================
+# =================================================================================================================
 
 
 # main execution script
@@ -541,11 +697,11 @@ if __name__ == '__main__':
 
     if delete_protokolle:
         # pmodels.Parl.objects.all().delete()
-        pmodels.ParlSession.objects.all().delete()
-        pmodels.Document.objects.all().delete()
-        pmodels.Paragraph.objects.all().delete()
-        pmodels.Utterance.objects.all().delete()
-        pmodels.Interjection.objects.all().delete()
+        # pmodels.ParlPeriod.objects.all().delete()
+        pm.Document.objects.all().delete()
+        pm.Paragraph.objects.all().delete()
+        pm.Utterance.objects.all().delete()
+        pm.Interjection.objects.all().delete()
         # Person.objects.all().delete()
 
     if add_party_colors:
@@ -558,7 +714,7 @@ if __name__ == '__main__':
             {'party':'gruene','colour':'#64A12D'},
         ]
         for pc in pcolours:
-            p, created = pmodels.Party.objects.get_or_create(name=pc['party'])
+            p, created = pm.Party.objects.get_or_create(name=pc['party'])
             p.colour = pc['colour']
             p.save()
 
@@ -567,18 +723,20 @@ if __name__ == '__main__':
     count_errors = 0
 
     print("starting parsing")
-    for collection in os.listdir(data_dir):
+    # for collection in os.listdir(data_dir):
+    for collection in ['/media/Data/MCC/Parliament Germany/Plenarprotokolle/pp01-data.zip']:
         if collection.endswith(".zip"):
             archive = zipfile.ZipFile(os.path.join(data_dir, collection), 'r')
             print("loading files from {}".format(collection))
             filelist = archive.infolist()
-            for zipitem in filelist[:2]:
+            for zipitem in filelist[:10]:
                 f = archive.open(zipitem)
                 parser_result = parse_transcript(f, verbosity=verbosity)
                 count_errors += parser_result
                 document_counter += 1
 
             archive.close()
+            # break
 
     print("Parsed {} documents.".format(document_counter))
     print("Documents with errors: {}".format(count_errors))
