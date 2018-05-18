@@ -11,5 +11,5 @@ pip install -r requirements.txt
 
 ```bash
 DATABSE_URI=<db_url> python views.py
-#e.g.: DATABSE_URL=sqlite:////home/user/db.sqlite python scraper/scraper.py
+scraper_pdfscans.py
 ```

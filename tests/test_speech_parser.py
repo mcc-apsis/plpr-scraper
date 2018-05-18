@@ -2,7 +2,7 @@
 import os
 import unittest
 
-from scraper.scraper import SpeechParser
+from scraper.scraper_pdfscans import SpeechParser
 
 
 class TestSpeechParser(unittest.TestCase):

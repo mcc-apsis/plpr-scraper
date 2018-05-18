@@ -212,6 +212,8 @@ def parse_mdb_data(verbosity=0):
         ortszusatz = names.find('ORTSZUSATZ').text
         if ortszusatz is not None:
             person.clean_name += " " + ortszusatz
+            person.ortszusatz = ortszusatz.strip('() ')
+
         person.adel = names.find('ADEL').text
 
         if verbosity > 0:
