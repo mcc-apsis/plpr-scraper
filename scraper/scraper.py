@@ -25,7 +25,7 @@ if platform.node() == "mcc-apsis":
 else:
     # local paths
     sys.path.append('/media/Data/MCC/tmv/BasicBrowser/')
-    data_dir = '/media/Data/MCC/Parliament Germany/plpr-scraper-old/data'
+    data_dir = '/media/Data/MCC/plpr-scraper/data'
 
 # imports and settings for django and database
 # --------------------------------------------
@@ -349,9 +349,14 @@ def parse_transcript(filename):
     doc, created = Document.objects.get_or_create(
         parlperiod=ps,
         doc_type="plenarprotokolle",
-        date=parser.date
+        date=parser.date,
+        sitting=session
     )
-    doc.sitting=session
+
+    if not created:
+        print("document already parsed to database")
+        return 0
+
     doc.save()
 
     doc.utterance_set.all().delete()
@@ -576,7 +581,7 @@ def match_person_in_db(name, wp):
 
 if __name__ == '__main__':
 
-    delete_all_entries = True
+    delete_all_entries = False
 
     if delete_all_entries:
         Document.objects.all().delete()
@@ -599,7 +604,7 @@ if __name__ == '__main__':
 
     # fetch_protokolle()
 
-    for filename in os.listdir(TXT_DIR)[363:]:
+    for filename in os.listdir(TXT_DIR):
         # if "18064.txt" in filename:
         print("parsing {}".format(filename))
         parse_transcript(os.path.join(TXT_DIR, filename))
