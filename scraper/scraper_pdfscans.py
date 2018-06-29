@@ -59,8 +59,9 @@ import cities.models as cmodels
 # re.M is short for re.MULITLINE
 
 
-DATE = re.compile('\w*,\s*(Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag),(?:\sden)?\s*(\d{1,2})\.\s*'
+DATE = re.compile('(?:Berlin|Bonn),\s*(Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag),(?:\sden)?\s*(\d{1,2})\.\s*'
                   '(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember) (\d{4})')
+
 D_MONTHS = {
     'Januar':1,
     'Februar':2,
@@ -223,11 +224,12 @@ class SpeechParser(object):
 
     def get_date(self):
         for line in self.lines:
-            if DATE.match(line):
+            date_match = DATE.search(line)
+            if date_match:
                 try:
-                    d = int(DATE.match(line).group(2))
-                    m = int(D_MONTHS[DATE.match(line).group(3)])
-                    y = int(DATE.match(line).group(4))
+                    d = int(date_match.group(2))
+                    m = int(D_MONTHS[date_match.group(3)])
+                    y = int(date_match.group(4))
                     date = datetime.date(y, m, d)
                     self.date = date
                     return
@@ -239,6 +241,9 @@ class SpeechParser(object):
                     print("group 3: {}".format(DATE.match(line).group(3)))
                     print("group 4: {}".format(DATE.match(line).group(4)))
                     raise ValueError
+
+        print("Parser: Did not find date")
+        return None
 
     def append_text_and_poi(self):
         par = {
@@ -312,13 +317,15 @@ class SpeechParser(object):
 
             header_match = HEADER_MARK.match(line)
             if header_match is not None:
-                print("= matched header: ", line)
+                if verbosity > 0:
+                    print("= matched header: ", line)
                 self.in_header = True
                 continue
 
             if self.in_header and self.speaker is not None:
                 if line.startswith(self.speaker):
-                    print("= matched current speaker in header: {}".format(line))
+                    if verbosity > 0:
+                        print("= matched current speaker in header: {}".format(line))
                     continue
                 else:
                     self.in_header = False
@@ -326,7 +333,8 @@ class SpeechParser(object):
             is_top = False
             # new point on the agenda (top - tagesordnungspunkt)
             if TOP_MARK.match(line):
-                print("= matched top mark: {}".format(line))
+                if verbosity > 0:
+                    print("= matched top mark: {}".format(line))
                 is_top = True
 
             has_stopword = False
@@ -348,7 +356,8 @@ class SpeechParser(object):
                              BERICHTERSTATTER.match(line))
 
             if speaker_match is not None:
-                print("= matched speaker at line {}: {}".format(self.line_number, speaker_match))
+                if verbosity > 0:
+                    print("= matched speaker at line {}: {}".format(self.line_number, speaker_match))
                 self.in_poi = False
 
             if PARTY_MEMBER.match(line):
@@ -369,8 +378,6 @@ class SpeechParser(object):
                     if verbosity > 1:
                         print("number of paragraphs in utterance: {}".format(len(self.pars)))
                     if len(self.pars) < 1:
-                        print(self.text)
-
                         par = {
                             'text': dehyphenate(self.text),
                             # default for strip: removing leading and ending white space
@@ -517,9 +524,10 @@ def parse_transcript(file, verbosity=1):
     parser.get_date()
     if isinstance(file, zipfile.ZipExtFile):
         if parser.date != german_date(date):
-            print("Warning: dates do not match")
+            print("! Warning: dates do not match")
             warnings_counter2 += 1
             print(parser.date)
+            print(date)
             print(german_date(date))
 
     parl, created = pm.Parl.objects.get_or_create(
@@ -557,7 +565,7 @@ def parse_transcript(file, verbosity=1):
         contrib.update(base_data)
 
         if contrib['speaker']:
-            per = find_person_in_db(contrib['speaker'], wp)
+            per = find_person_in_db(contrib['speaker'], wp, verbosity=verbosity)
         else:
             print("! Warning: No speaker given, not saving the following contribution: {}".format(contrib))
             warnings_counter2 += 1
@@ -615,7 +623,7 @@ def parse_transcript(file, verbosity=1):
                         interjection.parties.add(party)
                 if ij.speakers:
                     for person in ij.speakers:
-                        per = find_person_in_db(person, wp)
+                        per = find_person_in_db(person, wp, verbosity=verbosity)
                         if per is not None:
                             interjection.persons.add(per)
                         else:
@@ -633,7 +641,7 @@ def parse_transcript(file, verbosity=1):
     print("number of interjections: {}".format(interjection_counter))
     print("warnings in SpeechParser generator: {}".format(parser.warnings_counter))
     print("warnings in parse_transcript function: {}".format(warnings_counter2))
-    print("==================================================\n")
+    print("==================================================")
 
     if utterance_counter <= 0:
         return (1, 0)
@@ -649,8 +657,8 @@ def find_person_in_db(name, wp, create=True, verbosity=1):
     name = INHYPHEN.sub(r'\1\2', name)
 
     position = PERSON_POSITION.search(name)
-    if position:
-        print("=position: {}".format(position.group(0)))
+    if position and verbosity > 1:
+        print("= position: {}".format(position.group(0)))
 
         position = position.group(0)
     cname = PERSON_POSITION.sub('', name).strip(' ,')
@@ -727,8 +735,11 @@ def find_person_in_db(name, wp, create=True, verbosity=1):
             if title:
                 person.title = title
             if party:
-                party_obj = pm.Party.objects.get(alt_names__contains=[party])
-                person.party = party_obj
+                try:
+                    party_obj = pm.Party.objects.get(alt_names__contains=[party])
+                    person.party = party_obj
+                except pm.Party.DoesNotExist:
+                    print("! Warning: party could not identified: {}".format(party))
             if ortszusatz:
                 person.ortszusatz = ortszusatz
             person.save()
@@ -747,8 +758,11 @@ def find_person_in_db(name, wp, create=True, verbosity=1):
                 if title:
                     person.title = title
                 if party:
-                    party_obj = pm.Party.objects.get(alt_names__contains=[party])
-                    person.party = party_obj
+                    try:
+                        party_obj = pm.Party.objects.get(alt_names__contains=[party])
+                        person.party = party_obj
+                    except pm.Party.DoesNotExist:
+                        print("! Warning: party could not identified: {}".format(party))
                 if ortszusatz:
                     person.ortszusatz = ortszusatz
                 # use position with data model "Post" ?
@@ -772,7 +786,7 @@ def clear_db():
 def lines_with_one_character(file):
 
     if isinstance(file, str):
-        print("loading text from {}".format(file))
+        # print("loading text from {}".format(file))
         with open(file) as fh:
             text = fh.read()
         text = text.replace("\t", "").split("\n")
@@ -784,7 +798,7 @@ def lines_with_one_character(file):
         if filename.endswith(".xml"):
             root = ElementTree.fromstring(content)
             text = root.find("TEXT").text.replace("\t", "").split("\n")
-            print("loading text from {}".format(filename))
+            # print("loading text from {}".format(filename))
         else:
             print("filetype not xml")
             return None
@@ -809,7 +823,7 @@ if __name__ == '__main__':
     delete_additional_persons = True
     delete_all = False
     add_party_colors = True
-    verbosity = 2
+    verbosity = 0
 
     if add_party_colors:
         pcolours = [
@@ -843,7 +857,7 @@ if __name__ == '__main__':
     count_warnings_sum = 0
 
     print("start parsing...")
-    for wp in range(16, 13, -1):
+    for wp in range(16, 15, -1):
         collection = "pp{}-data.zip".format(wp, '02d')
         print(collection)
 
@@ -856,7 +870,7 @@ if __name__ == '__main__':
         archive = zipfile.ZipFile(os.path.join(data_dir, collection), 'r')
         print("loading files from {}".format(collection))
         filelist = archive.infolist()
-        for zipitem in filelist[2:3]:
+        for zipitem in filelist[1:2]:
             f = archive.open(zipitem)
             parser_errors, parser_warnings = parse_transcript(f, verbosity=verbosity)
             count_errors += parser_errors
@@ -869,10 +883,12 @@ if __name__ == '__main__':
 
             f = archive.open(zipitem)
             print("lines with one character: {}".format(lines_with_one_character(f)))
+            print("==================================================\n")
+
             f.close()
 
         archive.close()
-        break
+
 
     print("\n==================================================")
     print("Summary for {} documents:".format(document_counter))

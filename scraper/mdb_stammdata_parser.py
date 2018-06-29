@@ -111,7 +111,7 @@ LANDS = {
 
 
 PARTY_NAMES = [
-    {'name':'cducsu','alt_names':['CDU','CSU','Fraktion der Christlich Demokratischen Union/Christlich - Sozialen Union',
+    {'name':'cducsu','alt_names':['CDU','CSU','CDU/CSU', 'Fraktion der Christlich Demokratischen Union/Christlich - Sozialen Union',
                                   'Fraktion der CDU/CSU (Gast)', 'CSUS', 'DSU']},
                                 # all mdbs of dsu were guests with CDU
     {'name': 'linke', 'alt_names': ['DIE LINKE','Gruppe der Partei des Demokratischen Sozialismus/Linke Liste','DIE LINKE.',
