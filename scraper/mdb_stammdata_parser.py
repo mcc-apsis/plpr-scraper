@@ -383,4 +383,20 @@ if __name__ == '__main__':
     # parsing the data
     parse_mdb_data(verbosity=0)
 
+    add_party_colors = True
+
+    if add_party_colors:
+        pcolours = [
+            {'party':'cducsu','colour':'#000000'},
+            {'party':'spd','colour':'#EB001F'},
+            {'party':'linke','colour':'#8C3473'},
+            {'party':'fdp','colour':'#FFED00'},
+            {'party':'afd','colour':'#cducsu'},
+            {'party':'gruene','colour':'#64A12D'},
+        ]
+        for pc in pcolours:
+            p, created = pm.Party.objects.get_or_create(name=pc['party'])
+            p.colour = pc['colour']
+            p.save()
+
 

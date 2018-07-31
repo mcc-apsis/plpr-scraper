@@ -116,10 +116,10 @@ BERICHTERSTATTER = re.compile('\s*(.{4,140}?, Berichterstatter(in)?.*?):\s*')
 PERSON_POSITION = ['Vizepräsident(in)?', 'Präsident(in)?',
                    'Alterspräsident(in)?', 'Bundeskanzler(in)?',
                    'Staatsminister(in)?', '(?<=,\s)Bundesminister(in)?\s*(für)?.*$',
-                   'Parl. Staatssekretär(in)?', '(?<=,\s)Berichterstatter(in)?']
+                   'Parl. Staatssekretär(in)?', '(?<=,\s)Berichterstatter(in)?', 'Abg.']
 PERSON_POSITION = re.compile(u'(%s)' % '|'.join(PERSON_POSITION), re.U)
 
-NAME_REMOVE = [u'\\[.*\\]|\\(.*\\)', u' de[sr]', u'Ge ?genruf', 'Weiterer Zuruf', 'Zuruf', 'Weiterer',
+NAME_REMOVE = [u'\\[.*\\]|\\(.*\\)', u' de[sr]', u'Gegenruf', 'Weiterer Zuruf', 'Zuruf', 'Weiterer',
                u', zur.*', u', auf die', u' an die', u', an .*', u'gewandt', 'Liedvortrag']
 NAME_REMOVE = re.compile(u'(%s)' % '|'.join(NAME_REMOVE), re.U)
 
@@ -200,6 +200,8 @@ class POI(object):
         elif "Zuruf" in text:
             self.parties = search_party_names(text)
             self.type = pm.Interjection.OUTCRY
+        else:
+            self.type = pm.Interjection.OTHER
 
 
 class SpeechParser(object):
@@ -545,7 +547,7 @@ def parse_transcript(file, verbosity=1):
 
     doc, created = pm.Document.objects.get_or_create(
         parlperiod=pp,
-        doc_type="plenarprotokolle",
+        doc_type="Plenarprotokoll",
         date=german_date(date)
     )
     if created:
@@ -655,6 +657,7 @@ def parse_transcript(file, verbosity=1):
 def find_person_in_db(name, wp, create=True, verbosity=1):
 
     name = INHYPHEN.sub(r'\1\2', name)
+    name = NAME_REMOVE.sub('', name)
 
     position = PERSON_POSITION.search(name)
     if position and verbosity > 1:
@@ -743,6 +746,7 @@ def find_person_in_db(name, wp, create=True, verbosity=1):
             if ortszusatz:
                 person.ortszusatz = ortszusatz
             person.save()
+            return person
 
         except pm.Person.DoesNotExist:
 
@@ -768,6 +772,8 @@ def find_person_in_db(name, wp, create=True, verbosity=1):
                 # use position with data model "Post" ?
 
                 person.save()
+                print("Created person: {}".format(person))
+
                 return person
 
             else:
@@ -811,8 +817,6 @@ def lines_with_one_character(file):
 
 # =================================================================================================================
 
-
-
 # main execution script
 if __name__ == '__main__':
 
@@ -820,24 +824,9 @@ if __name__ == '__main__':
 
     # settings for parsing
     delete_protokolle = True
-    delete_additional_persons = True
+    delete_additional_persons = False
     delete_all = False
-    add_party_colors = True
     verbosity = 0
-
-    if add_party_colors:
-        pcolours = [
-            {'party':'cducsu','colour':'#000000'},
-            {'party':'spd','colour':'#EB001F'},
-            {'party':'linke','colour':'#8C3473'},
-            {'party':'fdp','colour':'#FFED00'},
-            {'party':'afd','colour':'#cducsu'},
-            {'party':'gruene','colour':'#64A12D'},
-        ]
-        for pc in pcolours:
-            p, created = pm.Party.objects.get_or_create(name=pc['party'])
-            p.colour = pc['colour']
-            p.save()
 
     if delete_all:
         # pmodels.Person.objects.all().delete()
@@ -857,8 +846,8 @@ if __name__ == '__main__':
     count_warnings_sum = 0
 
     print("start parsing...")
-    for wp in range(16, 15, -1):
-        collection = "pp{}-data.zip".format(wp, '02d')
+    for wp in range(9, 5, -1):
+        collection = "pp{wp:02d}-data.zip".format(wp=wp)
         print(collection)
 
         if delete_protokolle:
@@ -870,7 +859,7 @@ if __name__ == '__main__':
         archive = zipfile.ZipFile(os.path.join(data_dir, collection), 'r')
         print("loading files from {}".format(collection))
         filelist = archive.infolist()
-        for zipitem in filelist[1:2]:
+        for zipitem in filelist:
             f = archive.open(zipitem)
             parser_errors, parser_warnings = parse_transcript(f, verbosity=verbosity)
             count_errors += parser_errors

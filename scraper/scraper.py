@@ -348,7 +348,7 @@ def parse_transcript(filename):
     )
     doc, created = Document.objects.get_or_create(
         parlperiod=ps,
-        doc_type="plenarprotokolle",
+        doc_type="Plenarprotokoll",
         date=parser.date,
         sitting=session
     )
