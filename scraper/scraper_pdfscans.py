@@ -11,8 +11,8 @@ from xml.etree import ElementTree
 from urllib.parse import urljoin
 # Extract agenda numbers not part of normdatei
 from normality import normalize
-from normdatei.text import clean_text, clean_name, fingerprint  # , extract_agenda_numbers
-from normdatei.parties import search_party_names, PARTIES_REGEX
+from normdatei.text import fingerprint  # , extract_agenda_numbers
+from normdatei.parties import search_party_names
 from sqlalchemy import create_engine, Column, Integer, String, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -41,104 +41,8 @@ import parliament.models as pm
 from parliament.tasks import do_search
 import cities.models as cmodels
 
-# regex notes:
-# ? zero or one occurance
-# * zero or more occurances
-# + one or more occurances
-# {n} n occurances
-# {n, } n or more occurrances
-# {n, m} n to m occurrances
-# (?:x) -> non capturing group
-# (?=x) lookahead
-# (?<=x) lookbehind
-
-# ? can also be used to change the default greedy behavior (take as many characters as possible) into a lazy one:
-# e.g. (.*?) applied to (a) (b) will return (a), not (a) (b)
-
-# \d -> numerical digit
-# re.M is short for re.MULITLINE
-
-
-DATE = re.compile('(?:Berlin|Bonn),\s*(Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag),(?:\sden)?\s*(\d{1,2})\.\s*'
-                  '(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember) (\d{4})')
-
-D_MONTHS = {
-    'Januar':1,
-    'Februar':2,
-    'März':3,
-    'April': 4,
-    'Mai': 5,
-    'Juni': 6,
-    'Juli': 7,
-    'August': 8,
-    'September': 9,
-    'Oktober': 10,
-    'November': 11,
-    'Dezember': 12
-}
-
-INDEX_URL = 'https://www.bundestag.de/plenarprotokolle'
-ARCHIVE_URL = 'http://webarchiv.bundestag.de/archive/2013/0927/dokumente/protokolle/plenarprotokolle/plenarprotokolle/17%03.d.txt'
-
-CHAIRS = ['Vizepräsidentin', 'Vizepräsident', 'Präsident', 'Präsidentin', 'Alterspräsident', 'Alterspräsidentin']
-
-SPEAKER_STOPWORDS = ['ich zitiere', 'zitieren', 'Zitat', 'zitiert',
-                     'ich rufe den', 'ich rufe die',
-                     'wir kommen zur Frage', 'kommen wir zu Frage', 'bei Frage',
-                     'fordert', 'fordern', u'Ich möchte',
-                     'Darin steht', ' Aspekte ', ' Punkte ', 'Berichtszeitraum']
-
-BEGIN_MARK = re.compile('Beginn:? [X\d]{1,2}[.:]\d{1,2} Uhr|.*?Beginn:\s*\d{1,2}\s?[.,:]\s?\d{1,2}|Beginn:\s*\d{1,2} Uhr|'
-                        'Beginn\s\d{1,2}\s*\.\s*\d{0,2}\sUhr|.*?Die Sitzung wird (um|urn) \d{1,2}[.:]*\d{0,2}\sUhr\s.*?(eröffnet|eingeleitet)')
-INCOMPLETE_BEGIN_MARK = re.compile('.*?Die Sitzung wird um \d{1,2} Uhr|Beginn?:')
-
-DISRUPTION_MARK = re.compile('^\s*Unterbrechung von [0-9.:]* bis [0-9.:]* Uhr|'
-                             'Namensaufruf und Wahl')
-
-END_MARK = re.compile('(\(Schluss:.\d{1,2}.\d{1,2}.Uhr\).*|\(*Schluss der Sitzung)|Die Sitzung ist geschlossen')
-
-HEADER_MARK = re.compile('\d{0,6}\s*Deutscher Bundestag\s*[–\-]\s*\d{1,2}\.\s*Wahlperiode\s*[–\-]\s*\d{1,4}\. Sitzung.\s*(Bonn|Berlin),'
-                         '|\s*\([A-Z]\)(\s*\([A-Z]\))*\s*$|\d{1,6}\s*$|^\s*\([A-Z]\)\s\)$|^\s*\([A-Z]$|^\s*[A-Z]\)$')
-
-ANY_PARTY = re.compile('({})'.format('|'.join([x.pattern.strip() for x in PARTIES_REGEX.values()])))
-
-# speaker type matches
-PARTY_MEMBER = re.compile('\s*(.{4,140}?\(([^\(\)]*)\)):\s*')
-PRESIDENT = re.compile('\s*((Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?).{5,140}?):\s*')
-STAATSSEKR = re.compile('\s*(.{4,140}?, Parl\. Staatssekretär.*?):\s*')
-STAATSMINISTER = re.compile('\s*(.{4,140}?, Staatsminister.*?):\s*')
-MINISTER = re.compile('\s*(.{4,140}?, Bundesminister.*?):\s*')
-WEHRBEAUFTRAGTER = re.compile('\s*(.{4,140}?, Wehrbeauftragter.*?):\s*')
-BUNDESKANZLER = re.compile('\s*(.{4,140}?, Bundeskanzler(in)?.*?):\s*')
-BEAUFTRAGT = re.compile('\s*(.{4,140}?, Beauftragter? der Bundes.*):\s*')
-BERICHTERSTATTER = re.compile('\s*(.{4,140}?, Berichterstatter(in)?.*?):\s*')
-
-PERSON_POSITION = ['Vizepräsident(in)?', 'Präsident(in)?',
-                   'Alterspräsident(in)?', 'Bundeskanzler(in)?',
-                   'Staatsminister(in)?', '(?<=,\s)Bundesminister(in)?\s*(für)?.*$',
-                   'Parl. Staatssekretär(in)?', '(?<=,\s)Berichterstatter(in)?', 'Abg.']
-PERSON_POSITION = re.compile(u'(%s)' % '|'.join(PERSON_POSITION), re.U)
-
-NAME_REMOVE = [u'\\[.*\\]|\\(.*\\)', u' de[sr]', u'Gegenruf', 'Weiterer Zuruf', 'Zuruf', 'Weiterer',
-               u', zur.*', u', auf die', u' an die', u', an .*', u'gewandt', 'Liedvortrag']
-NAME_REMOVE = re.compile(u'(%s)' % '|'.join(NAME_REMOVE), re.U)
-
-PERSON_PARTY = re.compile('\s*(.{4,140})\s\((.*)\)$')
-TITLE = re.compile('[A-Z]?\.?\s*Dr\.|Dr\.\sh\.c\.|Prof\.|Prof\.\sDr\.')
-
-TOP_MARK = re.compile('.*(?: rufe.*der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt)(.*)')
-POI_MARK = re.compile('\((.*)\)\s*$', re.M)
-POI_BEGIN = re.compile('\(\s*[A-Z][^)]+$')
-POI_END = re.compile('^[^(]+\)')
-
-WRITING_BEGIN = re.compile('.*werden die Reden zu Protokoll genommen.*')
-WRITING_END = re.compile(u'(^Tagesordnungspunkt .*:\s*$|– Drucksache d{2}/\d{2,6} –.*|^Ich schließe die Aussprache.$)')
-
-ABG = 'Abg\.\s*(.*?)(\[[\wäöüßÄÖÜ /]*\])'
-INHYPHEN = re.compile(r'([a-z])-([a-z])', re.U)
-
-# ABBREVIATED = re.compile('[A-Z]\.')
-
+from parsing_utils import dehyphenate, find_person_in_db, POI, clean_text, correct_pdf_parsing_errors
+from regular_expressions_global import *
 
 pretty_printer = pprint.PrettyPrinter(indent=4)
 
@@ -163,45 +67,6 @@ class Logger(object):
         #this handles the flush command by doing nothing.
         #you might want to specify some extra behavior here.
         pass
-
-
-# interjections (poi = point of interjection?)
-class POI(object):
-    def __init__(self,text):
-        self.poitext = text
-        self.speakers = []
-        self.parties = ""
-        self.type = None
-
-        for m in re.findall(ABG,text):
-            self.speakers.append(m[0].strip())
-            text = text.replace(m[1],"")
-        if ": " in text:
-            sinfo = text.split(': ', 1)
-            speaker = sinfo[0].split('[')
-            if len(speaker) > 1:
-                self.speakers.append(speaker[0].strip())
-            else:
-                self.parties = search_party_names(text)
-            self.poitext = sinfo[1].strip()
-            self.type = pm.Interjection.SPEECH
-        elif "Beifall" in text:
-            self.parties = search_party_names(text)
-            self.type = pm.Interjection.APPLAUSE
-        elif "Widerspruch" in text:
-            self.parties = search_party_names(text)
-            self.type = pm.Interjection.OBJECTION
-        elif "Heiterkeit" in text:
-            self.parties = search_party_names(text)
-            self.type = pm.Interjection.AMUSEMENT
-        elif "Lachen" in text:
-            self.parties = search_party_names(text)
-            self.type = pm.Interjection.LAUGHTER
-        elif "Zuruf" in text:
-            self.parties = search_party_names(text)
-            self.type = pm.Interjection.OUTCRY
-        else:
-            self.type = pm.Interjection.OTHER
 
 
 class SpeechParser(object):
@@ -252,7 +117,7 @@ class SpeechParser(object):
             'text': dehyphenate(self.text),
             'pois': []
         }
-        for poi_raw in self.poi_content.split(' - '):
+        for poi_raw in re.split(' [-–]-? ', self.poi_content):
             poi_obj = POI(poi_raw)
             par['pois'].append(poi_obj)
             if self.verbosity > 0:
@@ -279,15 +144,18 @@ class SpeechParser(object):
 
     def __iter__(self):
 
-        for line in self.lines:
+        no_lines = len(self.lines)
+        self.line_number = -1
+
+        while self.line_number + 1 < no_lines:
             self.line_number += 1
-            line = line.strip()
+            line = self.lines[self.line_number].strip()
             if verbosity > 1:
                 print("- l{l:04d}: ".format(l=self.line_number) + line)
 
             # Check if in session, session beginning, session ending
             if not self.in_session and BEGIN_MARK.match(line):
-                print("= matched begin mark: {}".format(line))
+                print("= matched begin mark at line {}: {}".format(self.line_number, line))
                 self.in_session = True
                 continue
             if not self.in_session and INCOMPLETE_BEGIN_MARK.match(line):
@@ -301,26 +169,45 @@ class SpeechParser(object):
             if DISRUPTION_MARK.match(line):
                 continue
 
-            if END_MARK.match(line):
-                print("= matched end mark: {}".format(line))
-                self.text.append(line)
-                par = {
-                    'text': dehyphenate(self.text),
-                    # default for strip: removing leading and ending white space
-                    'pois': []
-                }
-                self.pars.append(par)
-                yield self.emit()
-                return
+            for k in range(1,3):
+                lines = "\n".join(self.lines[self.line_number:self.line_number+k])
+                lines = dehyphenate(lines)
+                if END_MARK.search(lines):
+                    print("= matched end mark at line {}: {}".format(self.line_number, lines))
+                    self.text.append(lines)
+                    par = {
+                        'text': dehyphenate(self.text),
+                        # default for strip: removing leading and ending white space
+                        'pois': []
+                    }
+                    self.pars.append(par)
+                    yield self.emit()
+                    return
 
             # empty line
             if not len(line):
                 continue
 
+            # match repeated mentioning of speaker from header
+            if self.speaker:
+                speaker = self.speaker.replace('Dr. ', '')
+                speaker = speaker.split(" (")[0]
+                speaker = speaker.split(", ")[0]
+                # print("looking for {}".format(speaker))
+                try:
+                    SPEAKER_HEADER = re.compile('.{0,30}%s' % speaker)
+                    if SPEAKER_HEADER.match(line):
+                        if verbosity > 0:
+                            print("= matched speaker in header: ", line)
+                        continue
+                except:
+                    pass
+
             header_match = HEADER_MARK.match(line)
             if header_match is not None:
                 if verbosity > 0:
                     print("= matched header: ", line)
+
                 self.in_header = True
                 continue
 
@@ -347,20 +234,27 @@ class SpeechParser(object):
                     has_stopword = True
 
             noparty = False
-            speaker_match = (PRESIDENT.match(line) or
-                             PARTY_MEMBER.match(line) or
-                             STAATSSEKR.match(line) or
-                             STAATSMINISTER.match(line) or
-                             WEHRBEAUFTRAGTER.match(line) or
-                             BUNDESKANZLER.match(line) or
-                             BEAUFTRAGT.match(line) or
-                             MINISTER.match(line) or
-                             BERICHTERSTATTER.match(line))
 
-            if speaker_match is not None:
-                if verbosity > 0:
-                    print("= matched speaker at line {}: {}".format(self.line_number, speaker_match))
-                self.in_poi = False
+            for k in range(1,4):
+                lines = "\n".join(self.lines[self.line_number:self.line_number+k])
+                lines = dehyphenate(lines, nl=True)
+                # print(repr(lines)) # print with escape characters
+                speaker_match = (PRESIDENT.match(lines) or
+                                 PARTY_MEMBER.match(lines) or
+                                 STAATSSEKR.match(lines) or
+                                 STAATSMINISTER.match(lines) or
+                                 WEHRBEAUFTRAGTER.match(lines) or
+                                 BUNDESKANZLER.match(lines) or
+                                 BEAUFTRAGT.match(lines) or
+                                 MINISTER.match(lines) or
+                                 BERICHTERSTATTER.match(lines))
+
+                if speaker_match is not None:
+                    if verbosity > 0:
+                        print("= matched speaker at line {}: {}".format(self.line_number, speaker_match))
+                    self.in_poi = False
+                    self.line_number += k - 1
+                    break
 
             if PARTY_MEMBER.match(line):
                 if not ANY_PARTY.match(normalize(PARTY_MEMBER.match(line).group(2))):
@@ -428,7 +322,8 @@ class SpeechParser(object):
 
             self.text.append(line)
 
-        print("Reached end of file")
+        print("! Warning: Reached end of file without end mark")
+        self.warnings_counter += 1
         yield self.emit()
 
 
@@ -446,17 +341,10 @@ def german_date(str):
     return datetime.datetime.strptime(str,"%d.%m.%Y").date()
 
 
-def dehyphenate(text):
-    DEHYPHENATE = re.compile('(?<=[A-Za-zäöüß])(-\s*)\n(?!\s*[A-ZÄÖÜ][a-zäöüß])', re.M)
-
-    if isinstance(text, (list, tuple)):
-        text = '\n'.join(text)
-    text = DEHYPHENATE.sub('', text)
-    return text.replace('\n', ' ')
-
 # ====================================================================
 # ========== parse function ==========================================
 # ====================================================================
+
 
 def parse_transcript(file, verbosity=1):
 
@@ -501,6 +389,7 @@ def parse_transcript(file, verbosity=1):
             date = root.find("DATUM").text
             titel = root.find("TITEL").text
             text = clean_text(root.find("TEXT").text)
+            text = correct_pdf_parsing_errors(text)
         else:
             print("filetype not xml")
             return 0
@@ -548,11 +437,12 @@ def parse_transcript(file, verbosity=1):
     doc, created = pm.Document.objects.get_or_create(
         parlperiod=pp,
         doc_type="Plenarprotokoll",
-        date=german_date(date)
+        date=german_date(date),
+        sitting=session,
+        text_source="from https://www.bundestag.de/service/opendata (scans of pdfs with xml metadata)"
     )
     if created:
         print("created new object for plenary session document")
-    doc.sitting = session
     doc.save()
 
     doc.utterance_set.all().delete()
@@ -653,133 +543,6 @@ def parse_transcript(file, verbosity=1):
 # ==========================================================================================================
 # ==========================================================================================================
 
-
-def find_person_in_db(name, wp, create=True, verbosity=1):
-
-    name = INHYPHEN.sub(r'\1\2', name)
-    name = NAME_REMOVE.sub('', name)
-
-    position = PERSON_POSITION.search(name)
-    if position and verbosity > 1:
-        print("= position: {}".format(position.group(0)))
-
-        position = position.group(0)
-    cname = PERSON_POSITION.sub('', name).strip(' ,')
-
-    title = TITLE.match(cname)
-    if title:
-        title = title.group(0)
-    cname = TITLE.sub('', cname).strip()
-
-    party = PERSON_PARTY.match(cname)
-    if party:
-        party = party.group(2)
-    cname = PERSON_PARTY.sub(r'\1', cname)
-
-    ortszusatz = PERSON_PARTY.match(cname)
-    if ortszusatz:
-        ortszusatz = ortszusatz.group(2)
-    cname = PERSON_PARTY.sub(r'\1', cname)
-
-    cname = cname.strip('- ()')  # remove beginning and tailing "-", "(", ")" and white space
-
-    if len(cname.split(' ')) > 1:
-        surname = cname.split(' ')[-1]
-        firstname = cname.split(' ')[0]
-    else:
-        surname = cname
-        firstname = ''
-
-    # find matching entry in database
-    query = pm.Person.objects.filter(
-        surname=surname,
-        in_parlperiod__contains=[wp])
-
-    if len(query) == 1:
-        if verbosity > 1:
-            print("= matched person in db: {}".format(name))
-        return query.first()
-
-    elif len(query) > 1:
-        if verbosity > 1:
-            print("= found multiple persons in query")
-            print(query)
-
-        if firstname:
-            query = query.filter(first_name=firstname)
-            if len(query) == 1:
-                if verbosity > 1:
-                    print("= ambiguity resolved")
-                return query.first()
-
-        if party:
-            query = query.filter(party__alt_names__contains=[party])
-            if len(query) == 1:
-                if verbosity > 1:
-                    print("ambiguity resolved")
-                return query.first()
-
-        print("! Warning: Could not distinguish between persons!")
-        if verbosity > 0:
-            print("name: {}".format(name))
-            print("first name: {}, surname: {}".format(firstname, surname))
-            print("title: {}, party: {}, position: {}, ortszusatz: {}".format(title, party, position, ortszusatz))
-
-        if create:
-            person, created = pm.Person.objects.get_or_create(surname='Ambiguity', first_name='Ambiguity')
-            return person
-        else:
-            return None
-
-    else:
-        try:
-            person = pm.Person.objects.get(surname=surname,
-                                           first_name=firstname)
-            if title:
-                person.title = title
-            if party:
-                try:
-                    party_obj = pm.Party.objects.get(alt_names__contains=[party])
-                    person.party = party_obj
-                except pm.Party.DoesNotExist:
-                    print("! Warning: party could not identified: {}".format(party))
-            if ortszusatz:
-                person.ortszusatz = ortszusatz
-            person.save()
-            return person
-
-        except pm.Person.DoesNotExist:
-
-            print("! Warning: person not found in database: {}".format(cname))
-            if verbosity > 0:
-                print("name: {}".format(name))
-                print("first name: {}, surname: {}".format(firstname, surname))
-                print("title: {}, party: {}, position: {}, ortszusatz: {}".format(title, party, position, ortszusatz))
-                print("query: {}".format(query))
-
-            if create:
-                person = pm.Person(surname=surname, first_name=firstname)
-                if title:
-                    person.title = title
-                if party:
-                    try:
-                        party_obj = pm.Party.objects.get(alt_names__contains=[party])
-                        person.party = party_obj
-                    except pm.Party.DoesNotExist:
-                        print("! Warning: party could not identified: {}".format(party))
-                if ortszusatz:
-                    person.ortszusatz = ortszusatz
-                # use position with data model "Post" ?
-
-                person.save()
-                print("Created person: {}".format(person))
-
-                return person
-
-            else:
-                return None
-
-
 def clear_db():
     database = dataset.connect(db)
     table = database['plpr']
@@ -823,12 +586,13 @@ if __name__ == '__main__':
     sys.stdout = Logger()
 
     # settings for parsing
-    delete_protokolle = True
+    delete_protokolle = False
     delete_additional_persons = False
     delete_all = False
     verbosity = 0
 
     if delete_all:
+        print("Deleting all documents, utterances, paragraphs and interjections.")
         # pmodels.Person.objects.all().delete()
         # pmodels.Parl.objects.all().delete()
         # pmodels.ParlPeriod.objects.all().delete()
@@ -836,9 +600,11 @@ if __name__ == '__main__':
         pm.Paragraph.objects.all().delete()
         pm.Utterance.objects.all().delete()
         pm.Document.objects.all().delete()
+        print("Deletion done.")
 
     if delete_additional_persons:
-        pm.Person.objects.filter(year_of_birth=None).delete()
+        print("Deleting all persons added from protocol parsing.")
+        pm.Person.objects.filter(information_source__startswith="from protocol scraping").delete()
 
     document_counter = 0
     count_errors = 0
@@ -846,11 +612,12 @@ if __name__ == '__main__':
     count_warnings_sum = 0
 
     print("start parsing...")
-    for wp in range(9, 5, -1):
+    for wp in range(18, 13, -1):
         collection = "pp{wp:02d}-data.zip".format(wp=wp)
         print(collection)
 
         if delete_protokolle:
+            print("Deleting all documents, utterances, paragraphs and interjections from wp {}".format(wp))
             pm.Interjection.objects.filter(paragraph_id__utterance_id__document_id__parlperiod_id__n=wp).delete()
             pm.Paragraph.objects.filter(utterance_id__document_id__parlperiod_id__n=wp).delete()
             pm.Utterance.objects.filter(document_id__parlperiod_id__n=wp).delete()
@@ -858,23 +625,30 @@ if __name__ == '__main__':
 
         archive = zipfile.ZipFile(os.path.join(data_dir, collection), 'r')
         print("loading files from {}".format(collection))
-        filelist = archive.infolist()
-        for zipitem in filelist:
-            f = archive.open(zipitem)
-            parser_errors, parser_warnings = parse_transcript(f, verbosity=verbosity)
-            count_errors += parser_errors
-            if parser_warnings > 0:
-                count_warnings_docs += 1
-                count_warnings_sum += parser_warnings
+        filelist = [fzip.filename for fzip in archive.infolist()]
 
-            document_counter += 1
-            f.close()
+        for session in range(1, 250):
+            filename = "{wp:02d}{s:03d}.xml".format(wp=wp, s=session)
+            if filename in filelist:
 
-            f = archive.open(zipitem)
-            print("lines with one character: {}".format(lines_with_one_character(f)))
-            print("==================================================\n")
+                f = archive.open(filename)
+                print(f)
+                parser_errors, parser_warnings = parse_transcript(f, verbosity=verbosity)
+                count_errors += parser_errors
+                if parser_warnings > 0:
+                    count_warnings_docs += 1
+                    count_warnings_sum += parser_warnings
 
-            f.close()
+                document_counter += 1
+                f.close()
+
+                f = archive.open(filename)
+                print("lines with one character: {}".format(lines_with_one_character(f)))
+                print("==================================================\n")
+
+                f.close()
+            else:
+                print("{} not in archive".format(filename))
 
         archive.close()
 

@@ -395,7 +395,7 @@ if __name__ == '__main__':
             {'party':'gruene','colour':'#64A12D'},
         ]
         for pc in pcolours:
-            p, created = pm.Party.objects.get_or_create(name=pc['party'])
+            p, created = Party.objects.get_or_create(name=pc['party'])
             p.colour = pc['colour']
             p.save()
 
