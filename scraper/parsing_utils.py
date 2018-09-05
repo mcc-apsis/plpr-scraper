@@ -2,9 +2,11 @@
 import re
 from regular_expressions_global import *
 from normdatei.parties import search_party_names
+from normality import normalize
 
 # import from appended path
 import parliament.models as pm
+import cities.models as cmodels
 
 
 def dehyphenate(text, nl=False):
@@ -26,9 +28,48 @@ def dehyphenate_with_space(text):
     text = DEHYPHENATE_SPACE.sub('', text)
     return text.replace('\n', ' ')
 
+# =================================================================================================
 
-def find_person_in_db(name, wp, add_info=dict(), create=True,
+def emit_person(person, period=None, title="", party="", ortszusatz=""):
+    # add information to person if it is not from the stammdata
+    if person.information_source != "MDB Stammdata":
+        if title:
+            person.title = title
+        if party:
+            try:
+                party_obj = pm.Party.objects.get(alt_names__contains=[party])
+                person.party = party_obj
+            except pm.Party.DoesNotExist:
+                print("! Warning: party could not be identified: {}".format(party))
+        if ortszusatz:
+            person.ortszusatz = ortszusatz
+        if period:
+            period_set = set(person.in_parlperiod)
+            person.in_parlperiod = list(period_set.union({period}))
+
+        person.save()
+
+    return person
+
+def find_person_in_db(name, add_info=dict(), create=True,
                       first_entry_for_unresolved_ambiguity=True, verbosity=1):
+
+    if name.strip('-– ()') is '' or name is None:
+        print("! Warning: no valid name string given")
+        if create:
+            person, created = pm.Person.objects.get_or_create(surname='Error: no valid string', first_name='')
+            return person
+        else:
+            return None
+
+    original_string = name
+
+    if 'wp' in add_info.keys():
+        wp = add_info['wp']
+    else:
+        wp = None
+
+    name = clean_text(name)
     name = INHYPHEN.sub(r'\1\2', name)
     name = name.replace('\n', ' ')
     name = NAME_REMOVE.sub('', name)
@@ -72,39 +113,45 @@ def find_person_in_db(name, wp, add_info=dict(), create=True,
 
     if len(cname.split(' ')) > 1:
         surname = cname.split(' ')[-1].strip('-– ()') # remove beginning and tailing "-", "(", ")" and white space
-        firstname = cname.split(' ')[0].strip('-– ()')
+        firstname = cname.split(' ')[0].strip('-– ()­')
     else:
         surname = cname.strip('-– ()')
         firstname = ''
 
     # find matching entry in database
-    query = pm.Person.objects.filter(
-        surname=surname,
-        in_parlperiod__contains=[wp])
+    query = pm.Person.objects.filter(alt_surnames__contains=[surname], alt_first_names__contains=[firstname])
 
     if len(query) == 1:
-        if verbosity > 1:
-            print("= matched person in db: {}".format(name))
         return query.first()
 
     elif len(query) > 1:
-        if verbosity > 1:
-            print("= found multiple persons in query")
-            print(query)
-
-        if firstname:
-            query = query.filter(first_name=firstname)
-            if len(query) == 1:
-                if verbosity > 1:
-                    print("= ambiguity resolved")
-                return query.first()
-
         if party:
-            query = query.filter(party__alt_names__contains=[party])
-            if len(query) == 1:
-                if verbosity > 1:
-                    print("ambiguity resolved")
-                return query.first()
+            rquery = query.filter(party__alt_names__contains=[party])
+            if len(rquery) == 1:
+                return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
+            elif len(query) > 1:
+                query = rquery
+
+        if ortszusatz:
+            rquery = query.filter(ortszusatz=ortszusatz)
+            if len(rquery) == 1:
+                return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
+            elif len(query) > 1:
+                query = rquery
+
+        if title:
+            rquery = query.filter(title=title)
+            if len(rquery) == 1:
+                return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
+            elif len(query) > 1:
+                query = rquery
+
+        if wp:
+            rquery = query.filter(in_parlperiod__contains=[wp])
+            if len(rquery) == 1:
+                return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
+            elif len(query) > 1:
+                query = rquery
 
         print("! Warning: Could not distinguish between persons!")
         print("For name string: {}".format(name))
@@ -115,18 +162,19 @@ def find_person_in_db(name, wp, add_info=dict(), create=True,
         if first_entry_for_unresolved_ambiguity:
             print('Taking first entry of ambiguous results')
             return query.first()
-        elif create:
-            person, created = pm.Person.objects.get_or_create(surname='Ambiguity', first_name='Ambiguity')
-            return person
         else:
             return None
 
+    # if query returns no results
     else:
-        if verbosity > 1:
-            print("person not found by surname and wp, trying other methods.")
-        try:
-            person = pm.Person.objects.get(surname=surname,
-                                           first_name=firstname)
+        print("Person not found in database: {}".format(cname))
+        if verbosity > 0:
+            print("name: {}".format(name))
+            print("first name: {}, surname: {}".format(firstname, surname))
+            print("title: {}, party: {}, position: {}, ortszusatz: {}".format(title, party, position, ortszusatz))
+
+        if create:
+            person = pm.Person(surname=surname, first_name=firstname)
             if title:
                 person.title = title
             if party:
@@ -137,53 +185,40 @@ def find_person_in_db(name, wp, add_info=dict(), create=True,
                     print("! Warning: party could not be identified: {}".format(party))
             if ortszusatz:
                 person.ortszusatz = ortszusatz
+
+            if position:
+                position_set = set(person.positions)
+                person.positions = list(position_set.union({position}))
+
+            # use position with data model "Post" ?
+
+            if 'session' in add_info.keys():
+                session_str = "{sn:03d}".format(sn=add_info['session'])
+            else:
+                session_str = "???"
+
+            if 'source_type' in add_info.keys():
+                source_str = add_info['source_type']
+            else:
+                source_str = ""
+
+            person.in_parlperiod = [wp]
+            person.active_country = cmodels.Country.objects.get(name='Germany')
+            person.information_source = "from protocol scraping " \
+                                        "{wp:02d}/{sn} {type}: {name}".format(wp=wp, sn=session_str,
+                                                                              type=source_str, name=original_string)
             person.save()
+            print("Created person: {}".format(person))
             return person
 
-        except pm.Person.DoesNotExist:
-
-            print("! Warning: person not found in database: {}".format(cname))
-            if verbosity > 0:
-                print("name: {}".format(name))
-                print("first name: {}, surname: {}".format(firstname, surname))
-                print("title: {}, party: {}, position: {}, ortszusatz: {}".format(title, party, position, ortszusatz))
-                print("query: {}".format(query))
-
-            if create:
-                person = pm.Person(surname=surname, first_name=firstname)
-                person.clean_name = "{} {}".format(
-                    person.first_name,
-                    person.surname
-                ).strip()
-                if title:
-                    person.title = title
-                    person.clean_name = person.title + " " + person.clean_name
-                if party:
-                    try:
-                        party_obj = pm.Party.objects.get(alt_names__contains=[party])
-                        person.party = party_obj
-                    except pm.Party.DoesNotExist:
-                        print("! Warning: party could not be identified: {}".format(party))
-                if ortszusatz:
-                    person.ortszusatz = ortszusatz
-                    person.clean_name += " " + ortszusatz
-
-                # use position with data model "Post" ?
-
-                person.in_parlperiod = [wp]
-                person.information_source = "from protocol scraping: {}".format(name)
-                person.save()
-                print("Created person: {}".format(person))
-                return person
-
-            else:
-                return None
+        else:
+            return None
 
 
 # interjections (poi = point of interjection?)
 class POI(object):
     def __init__(self, text):
-        self.poitext = text
+        self.poitext = clean_text(text)
         self.speakers = []
         self.parties = ""
         self.type = None
@@ -225,8 +260,9 @@ def clean_text(text):
     text = text.replace('\r', '\n')
     text = text.replace(u'\xa0', ' ')
     text = text.replace(u'\x96', '-')
-    # text = text.replace(u'\u2014', '-')
-    # text = text.replace(u'\u2013', '-')
+    text = text.replace(u'\xad', '-')
+    text = text.replace(u'\u2014', '–')
+    # text = text.replace(u'\u2013', '–')
     return text
 
 
@@ -244,3 +280,11 @@ def correct_pdf_parsing_errors(text):
     text = re.sub('\s+\.\s', '. ', text)
     text = re.sub('\s+\.\s*\n', '.\n', text)
     return text
+
+
+# adapted from normdatei.text
+def fingerprint(name):
+    if name is None:
+        return
+    name = FP_REMOVE.sub(' ', name.strip())
+    return normalize(name).replace(' ', '-')

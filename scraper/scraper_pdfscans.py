@@ -16,7 +16,6 @@ from normdatei.parties import search_party_names
 from sqlalchemy import create_engine, Column, Integer, String, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import pprint
 import platform
 import zipfile
 
@@ -44,13 +43,15 @@ import cities.models as cmodels
 from parsing_utils import dehyphenate, find_person_in_db, POI, clean_text, correct_pdf_parsing_errors
 from regular_expressions_global import *
 
+import pprint
 pretty_printer = pprint.PrettyPrinter(indent=4)
 
 # ============================================================
 # write output to file and terminal
 
 time_stamp = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
-output_file = "./parlsessions_parser_output_" + time_stamp + ".log"
+output_file = "./parlsessions_pdf_parser_output_" + time_stamp + ".log"
+print("log file: {}".format(output_file))
 
 
 class Logger(object):
@@ -117,7 +118,7 @@ class SpeechParser(object):
             'text': dehyphenate(self.text),
             'pois': []
         }
-        for poi_raw in re.split(' [-–]-? ', self.poi_content):
+        for poi_raw in re.split(' [-–—]-? ', self.poi_content):
             poi_obj = POI(poi_raw)
             par['pois'].append(poi_obj)
             if self.verbosity > 0:
@@ -379,13 +380,13 @@ def parse_transcript(file, verbosity=1):
                     print("xml child: {}, attributes: {}".format(child.tag, child.attrib))
                     print("xml beginning of text: {}".format(child.text[:100].replace('\n', ' ')))
 
-            wp = root.find("WAHLPERIODE").text
+            wp = int(root.find("WAHLPERIODE").text)
             document_type = root.find("DOKUMENTART").text
             if document_type != "PLENARPROTOKOLL":
                 print("Warning: document {} is not tagged as Plenarprotokoll but {}".format(filename, document_type))
                 warnings_counter2 += 1
             number = root.find("NR").text
-            session = number.split("/")[1]
+            session = int(number.split("/")[1])
             date = root.find("DATUM").text
             titel = root.find("TITEL").text
             text = clean_text(root.find("TEXT").text)
@@ -457,7 +458,8 @@ def parse_transcript(file, verbosity=1):
         contrib.update(base_data)
 
         if contrib['speaker']:
-            per = find_person_in_db(contrib['speaker'], wp, verbosity=verbosity)
+            info_dict = {'wp': wp, 'session': session, 'source_type': 'PDF/SP'}
+            per = find_person_in_db(contrib['speaker'], add_info=info_dict, verbosity=verbosity)
         else:
             print("! Warning: No speaker given, not saving the following contribution: {}".format(contrib))
             warnings_counter2 += 1
@@ -515,7 +517,8 @@ def parse_transcript(file, verbosity=1):
                         interjection.parties.add(party)
                 if ij.speakers:
                     for person in ij.speakers:
-                        per = find_person_in_db(person, wp, verbosity=verbosity)
+                        info_dict = {'wp': wp, 'session': session, 'source_type': 'PDF/POI'}
+                        per = find_person_in_db(person, add_info=info_dict, verbosity=verbosity)
                         if per is not None:
                             interjection.persons.add(per)
                         else:
@@ -611,8 +614,11 @@ if __name__ == '__main__':
     count_warnings_docs = 0
     count_warnings_sum = 0
 
+    wps = range(16, 12, -1)
+    sessions = range(1, 300)
+
     print("start parsing...")
-    for wp in range(18, 13, -1):
+    for wp in wps:
         collection = "pp{wp:02d}-data.zip".format(wp=wp)
         print(collection)
 
@@ -627,7 +633,7 @@ if __name__ == '__main__':
         print("loading files from {}".format(collection))
         filelist = [fzip.filename for fzip in archive.infolist()]
 
-        for session in range(1, 250):
+        for session in sessions:
             filename = "{wp:02d}{s:03d}.xml".format(wp=wp, s=session)
             if filename in filelist:
 

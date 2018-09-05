@@ -6,6 +6,7 @@ import lxml.etree as etree
 import random
 import re
 import sys
+import datetime
 from normdatei.parties import search_party_names
 
 import django
@@ -31,15 +32,53 @@ import tmv_app.models as tm
 from parsing_utils import find_person_in_db, POI, dehyphenate_with_space, clean_text
 from regular_expressions_global import POI_MARK
 
+# ============================================================
+# write output to file and terminal
+
+import pprint
+pretty_printer = pprint.PrettyPrinter(indent=4)
+
+time_stamp = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+output_file = "./parlsessions_tei_parser_output_" + time_stamp + ".log"
+print("log file: {}".format(output_file))
+
+
+class Logger(object):
+    def __init__(self):
+        self.terminal = sys.stdout
+        self.log = open(output_file, "a")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+
+    def flush(self):
+        #this flush method is needed for python 3 compatibility.
+        #this handles the flush command by doing nothing.
+        #you might want to specify some extra behavior here.
+        pass
+
+
 class parse_tei_items(object):
 
-    def __init__(self, xtree, v=1):
+    def __init__(self, xtree, v=1, period=None, session=None):
         self.v = v
         self.divs = xtree.findall("//body//div")
         self.wp = int(xtree.xpath("//legislativePeriod//text()")[0])
-        self.session = int(xtree.xpath("//sessionNo//text()")[0])
+        self.session = int(re.findall(r'\b\d+\b', xtree.xpath("//sessionNo//text()")[0])[0])
+        if period is not None:
+            if period != self.wp:
+                print("! Warning: period number not matching: {} {}".format(period, self.wp))
+
+        if session is not None:
+            if session != self.session:
+                print("! Warning: session number not matching: {} {}".format(session, self.session))
+
         self.date = xtree.xpath("//date//text()")[0]
-        self.original_source = xtree.xpath("//sourceDesc//url//text()")[0]
+        try:
+            self.original_source = xtree.xpath("//sourceDesc//url//text()")[0]
+        except IndexError:
+            self.original_source = "NA"
         if self.v > 0:
             print("xml with protocol {}/{} from {}".format(self.wp, self.session, self.date))
 
@@ -100,7 +139,7 @@ class parse_tei_items(object):
         if poi_match is not None:
             self.poi_content = poi_match.group(1)
 
-        for poi_raw in re.split(' [-–]-? ', self.poi_content):
+        for poi_raw in re.split('\s[-–]-?\.?\s', self.poi_content):
             # de-hyphenate:
             poi_raw = dehyphenate_with_space(poi_raw)
             poi_obj = POI(poi_raw)
@@ -125,7 +164,8 @@ class parse_tei_items(object):
                     interjection.parties.add(party)
             if poi_obj.speakers:
                 for person in poi_obj.speakers:
-                    per = find_person_in_db(person, self.wp, verbosity=self.v)
+                    per = find_person_in_db(person, add_info={'wp': self.wp, 'session': self.session,
+                                                              'source_type': 'TEI/POI'}, verbosity=self.v)
                     if per is not None:
                         interjection.persons.add(per)
                     else:
@@ -144,8 +184,11 @@ class parse_tei_items(object):
                 if self.v > 1:
                     print("TEI current speaker: {}".format(sp.get("who")))
                 # match speaker to database:
-                info_dict = sp.attrib
-                speaker = find_person_in_db(sp.get("who"), self.wp, add_info=info_dict, verbosity=self.v)
+                info_dict = dict(sp.attrib)
+                info_dict['wp'] = wp
+                info_dict['session'] = self.session
+                info_dict['source_type'] = 'TEI/SP'
+                speaker = find_person_in_db(sp.get("who"), add_info=info_dict, verbosity=self.v)
 
                 if speaker is None:
                     print(sp.get("who"))
@@ -188,9 +231,25 @@ class parse_tei_items(object):
 # main execution script
 if __name__ == '__main__':
 
+    sys.stdout = Logger()
+
     single_doc = False
     replace_docs = False
     tei_path = "/media/Data/MCC/Parliament Germany/GermaParlTEI-master"
+
+    delete_all = False
+    delete_additional_persons = False
+
+    if delete_all:
+        print("Deleting all documents, utterances, paragraphs and interjections.")
+        pm.Interjection.objects.all().delete()
+        pm.Paragraph.objects.all().delete()
+        pm.Utterance.objects.all().delete()
+        pm.Document.objects.all().delete()
+        print("Deletion done.")
+    if delete_additional_persons:
+        print("Deleting all persons added from protocol parsing.")
+        pm.Person.objects.filter(information_source__startswith="from protocol scraping").delete()
 
     if single_doc:
         # single file
@@ -212,8 +271,8 @@ if __name__ == '__main__':
         exit()
 
     # go through all scripts iteratively
-    for wp in range(18, 13, -1):
-        for session in range(1, 250):
+    for wp in range(13, 12, -1):
+        for session in range(1, 300):
 
             xml_file = os.path.join(tei_path, "{wp:02d}/BT_{wp:02d}_{sn:03d}.xml".format(wp=wp, sn=session))
 
@@ -221,11 +280,12 @@ if __name__ == '__main__':
                 print("reading from {}".format(xml_file))
 
                 xtree = etree.parse(xml_file)
-                parser = parse_tei_items(xtree)
                 if replace_docs:
-                    pm.Document.objects.filter(parlperiod__n=parser.wp, sitting=parser.session).delete()
-                pm.Document.objects.filter(parlperiod__n=parser.wp, sitting=parser.session,
+                    pm.Document.objects.filter(parlperiod__n=wp, sitting=session).delete()
+                pm.Document.objects.filter(parlperiod__n=wp, sitting=session,
                                            text_source__startswith="GermaParlTEI from ").delete()
+
+                parser = parse_tei_items(xtree, period=wp, session=session)
                 parser.run()
 
     print("Done")

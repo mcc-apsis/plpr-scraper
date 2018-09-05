@@ -64,15 +64,16 @@ HEADER_MARK = re.compile('\d{0,6}\s*Deutscher Bundestag\s*[–\-]\s*\d{1,2}\.\s*
 ANY_PARTY = re.compile('({})'.format('|'.join([x.pattern.strip() for x in PARTIES_REGEX.values()])))
 
 # speaker type matches
-PARTY_MEMBER = re.compile('\s*(.{4,140}?\(([^\(\)]*)\)):\s*')
-PRESIDENT = re.compile('\s*((Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?).{5,140}?):\s*')
-STAATSSEKR = re.compile('\s*([^\n]{4,140}?, (Parl\s?\.\s)?Staatssekretär.*?):\s*', re.DOTALL)
-STAATSMINISTER = re.compile('\s*([^\n]{4,140}?, Staatsminister.*?):\s*', re.DOTALL)
-MINISTER = re.compile('\s*([^\n]{4,140}?, Bundesminister.*?):\s*', re.DOTALL)
-WEHRBEAUFTRAGTER = re.compile('\s*(.{4,140}?, Wehrbeauftragter.*?):\s*')
-BUNDESKANZLER = re.compile('\s*(.{4,140}?, Bundeskanzler(in)?.*?):\s*')
-BEAUFTRAGT = re.compile('\s*(.{4,140}?, Beauftragter? der Bundes.*):\s*')
-BERICHTERSTATTER = re.compile('\s*(.{4,140}?, Berichterstatter(in)?.*?):\s*')
+# longest mdb name has 44 chars
+PARTY_MEMBER = re.compile('\s*(.{4,50}?\(([^\(\)]*)\)):\s*')
+PRESIDENT = re.compile('\s*((Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?)\s.{5,50}?):\s*')
+STAATSSEKR = re.compile('\s*([^\n]{4,50}?, (Parl\s?\.\s)?Staatssekretär.*?):\s*', re.DOTALL)
+STAATSMINISTER = re.compile('\s*([^\n]{4,50}?, Staatsminister.*?):\s*', re.DOTALL)
+MINISTER = re.compile('\s*([^\n]{4,50}?, Bundesminister.*?):\s*', re.DOTALL)
+WEHRBEAUFTRAGTER = re.compile('\s*(.{4,50}?, Wehrbeauftragter.*?):\s*')
+BUNDESKANZLER = re.compile('\s*(.{4,50}?, Bundeskanzler(in)?.*?):\s*')
+BEAUFTRAGT = re.compile('\s*(.{4,50}?, Beauftragter? der Bundes.*):\s*')
+BERICHTERSTATTER = re.compile('\s*(.{4,50}?, Berichterstatter(in)?.*?):\s*')
 
 PERSON_POSITION = ['Vizepräsident(in)?', 'Präsident(in)?',
                    'Alterspräsident(in)?', 'Bundeskanzler(in)?',
@@ -82,13 +83,13 @@ PERSON_POSITION = ['Vizepräsident(in)?', 'Präsident(in)?',
 
 PERSON_POSITION = re.compile(u'(%s)' % '|'.join(PERSON_POSITION), re.U)
 
-NAME_REMOVE = [u'\\[.*\\]|\\(.*\\)', u' de[sr]', u'Gegenruf', 'Weiterer Zuruf', 'Zuruf', 'Weiterer',
+NAME_REMOVE = [u'\\[.*\\]|\\(.*\\)', u' de[sr]', u'Gegenrufe?', 'Weiterer Zuruf', 'Zuruf', 'Weiterer',
                u', zur.*', u', auf die', u' an die', u', an .*', u'gewandt', 'Liedvortrag', '#',
                'Beifall', ' bei der', u'\\d{1,20}', 'Widerspruch', 'Lachen', 'Heiterkeit']
 NAME_REMOVE = re.compile(u'(%s)' % '|'.join(NAME_REMOVE), re.U)
 
 PERSON_PARTY = re.compile('\s*(.{4,140})\s\((.*)\)$')
-TITLE = re.compile('[A-Z]?\.?\s*Dr\.|Dr\.\sh\.\s?c\.|Prof\.(\sDr\.)?(\sDr\.)?(h\.\s?c\.)?')
+TITLE = re.compile('[A-Z]?\.?\s*Dr\s?\.(\sh\.\s?c\.)?|Prof\.(\sDr\.)?(\sDr\.)?(h\.\s?c\.)?')
 
 TOP_MARK = re.compile('.*(?: rufe.*der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt)(.*)')
 POI_MARK = re.compile('\((.*)\)\s*$', re.M)
@@ -98,5 +99,7 @@ POI_END = re.compile('^[^(]+\)')
 WRITING_BEGIN = re.compile('.*werden die Reden zu Protokoll genommen.*')
 WRITING_END = re.compile(u'(^Tagesordnungspunkt .*:\s*$|– Drucksache d{2}/\d{2,6} –.*|^Ich schließe die Aussprache.$)')
 
-ABG = 'Abg\.\s*(.*?)(\[[\wäöüßÄÖÜ /]*\])'
+ABG = 'Abg\.\s*(.{4,50}?)(\[[\wäöüßÄÖÜ /]*\])'
 INHYPHEN = re.compile(r'([a-zäöüß])-\s?([a-zäöüß])', re.U)
+
+FP_REMOVE = re.compile(u'(^.*Dr.?( h.? ?c.?)?| (von( der)?)| [A-Z]\. )')

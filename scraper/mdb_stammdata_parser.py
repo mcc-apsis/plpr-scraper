@@ -11,7 +11,7 @@ from lxml import html
 from urllib.parse import urljoin
 # Extract agenda numbers not part of normdatei
 from normality import normalize
-from normdatei.text import clean_text, clean_name, fingerprint#, extract_agenda_numbers
+from normdatei.text import clean_text, fingerprint#, extract_agenda_numbers
 from normdatei.parties import search_party_names, PARTIES_REGEX
 from bs4 import BeautifulSoup
 import platform
@@ -63,6 +63,7 @@ if map_countries:
                        "Südwestafrika": "Namibia",
                        "Estland": "Estonia",
                        "Tansania (ehem. Deutsch - Ost - Afrika)": "Tanzania",
+                       "Tansania (ehem. Deutsch-Ost-Afrika)": "Tanzania",
                        "Niederösterreich": "Austria",
                        }
 
@@ -137,14 +138,17 @@ PARTY_NAMES = [
     {'name': 'gb/bhe', 'alt_names': ['gb/bhe', 'GB/BHE', 'GB/ BHE',
                                      'Fraktion Gesamtdeutscher Block / Block der Heimatvertriebenen und Entrechteten',
                                      'Fraktion Deutscher Gemeinschaftsblock der Heimatvertriebenen und Entrechteten']},
-    {'name': 'dzp', 'alt_names': ['dzp', 'DZP', 'Fraktion Deutsche Zentrums-Partei']},
+    {'name': 'dzp', 'alt_names': ['dzp', 'DZP', 'Fraktion Deutsche Zentrums-Partei', 'FU',
+                                  'Fraktion Föderalistische Union']},
+    # Fraktion Förderalistische Union (FU) was not a party but a faction of DZP and BP
     {'name': 'drp', 'alt_names': ['drp', 'DRP', 'Fraktion Deutsche Reichspartei/Nationale Rechte',
                                   'Fraktion Deutsche Reichspartei', 'Fraktion DRP (Gast)']},
-    {'name': 'wav', 'alt_names': ['WAV', 'Fraktion Wirtschaftliche Aufbauvereinigung', 'Fraktion WAV (Gast)']}
-    # {'name': 'fu', 'alt_names': ['FU', 'Fraktion Föderalistische Union']}
-    # this was not a party but a faction of DZP and BP
-    # {'name': 'other', 'alt_names': ['SRP', , 'CVP']}
+    {'name': 'wav', 'alt_names': ['WAV', 'Fraktion Wirtschaftliche Aufbauvereinigung', 'Fraktion WAV (Gast)']},
+    {'name': 'other', 'alt_names': ['SRP', 'CVP', 'Gruppe Kraft/Oberländer', 'Gruppe Deutsche Partei']},
     # {'name':'', 'alt_names': []},
+    {'name': 'parteilos', 'alt_names': ['parteilos', 'Parteilos']},
+    {'name': 'fraktionslos', 'alt_names': ['fraktionslos', 'Fraktionslos']}
+
 ]
 
 parl, created = Parl.objects.get_or_create(
@@ -196,22 +200,15 @@ def parse_mdb_data(verbosity=0):
             continue
         names = mdb.find('NAMEN/NAME')
         biodata = mdb.find('BIOGRAFISCHE_ANGABEN')
-        person, created = Person.objects.get_or_create(
+        person = Person(
             surname=names.find('NACHNAME').text,
             first_name=names.find('VORNAME').text,
             dob=german_date(biodata.find('GEBURTSDATUM').text)
             )
         person.title = names.find('ANREDE_TITEL').text
-        person.clean_name = "{} {}".format(
-            person.first_name,
-            person.surname
-            ).strip()
-        if person.title is not None:
-            person.clean_name = person.title + " " + person.clean_name
         person.academic_title = names.find('AKAD_TITEL').text
         ortszusatz = names.find('ORTSZUSATZ').text
         if ortszusatz is not None:
-            person.clean_name += " " + ortszusatz
             person.ortszusatz = ortszusatz.strip('() ')
 
         person.adel = names.find('ADEL').text
@@ -264,16 +261,20 @@ def parse_mdb_data(verbosity=0):
         person.religion = biodata.find('RELIGION').text
         person.occupation = biodata.find('BERUF').text
         person.short_bio = biodata.find('VITA_KURZ').text
+
         try:
             person.party = Party.objects.get(alt_names__contains=[biodata.find('PARTEI_KURZ').text])
         except Party.DoesNotExist:
             if biodata.find('PARTEI_KURZ').text == 'Plos':
-                # TODO: mark Person as parteilos
+                person.party = Party.objects.get(name="parteilos")
                 pass
             else:
                 print("Warning: Party not found: {}".format(biodata.find("PARTEI_KURZ").text))
                 warn += 1
 
+        person.active_country = Country.objects.get(name='Germany')
+        person.positions = ['parliamentarian']
+        person.information_source = "MDB Stammdata"
         person.save()
 
         wp_list = []
@@ -310,7 +311,7 @@ def parse_mdb_data(verbosity=0):
                                 )
                     except Party.DoesNotExist:
                         if ins.find('INS_LANG').text == "Fraktionslos":
-                            # TODO: add attribute to seat that it is not belonging to a party
+                            person.party = Party.objects.get(name="fraktionslos")
                             pass
 
                         else:
@@ -369,12 +370,17 @@ def parse_mdb_data(verbosity=0):
 
 
 if __name__ == '__main__':
-    # to delete all existing entries for constituencies, partylists, seats and persons
-    Constituency.objects.all().delete()
-    PartyList.objects.all().delete()
-    Party.objects.all().delete()
-    Seat.objects.all().delete()
-    Person.objects.all().delete()
+    delete_all = True
+    if delete_all:
+        # to delete all existing entries for constituencies, partylists, seats and persons
+        Constituency.objects.all().delete()
+        PartyList.objects.all().delete()
+        Party.objects.all().delete()
+        Seat.objects.all().delete()
+        Person.objects.all().delete()
+
+    else:
+        Person.objects.filter(information_source="MDB Stammdata").delete()
 
     # getting the data
     fetch_mdb_data()
