@@ -198,20 +198,47 @@ def parse_mdb_data(verbosity=0):
     for mdb in root:
         if mdb.tag == "VERSION":
             continue
-        names = mdb.find('NAMEN/NAME')
+        names = mdb.find('NAMEN')
         biodata = mdb.find('BIOGRAFISCHE_ANGABEN')
+
+        # use the last entry of names for identification
         person = Person(
-            surname=names.find('NACHNAME').text,
-            first_name=names.find('VORNAME').text,
+            surname=names[-1].find('NACHNAME').text,
+            first_name=names[-1].find('VORNAME').text,
             dob=german_date(biodata.find('GEBURTSDATUM').text)
             )
-        person.title = names.find('ANREDE_TITEL').text
-        person.academic_title = names.find('AKAD_TITEL').text
-        ortszusatz = names.find('ORTSZUSATZ').text
+        person.title = names[-1].find('ANREDE_TITEL').text
+        person.academic_title = names[-1].find('AKAD_TITEL').text
+        ortszusatz = names[-1].find('ORTSZUSATZ').text
         if ortszusatz is not None:
             person.ortszusatz = ortszusatz.strip('() ')
 
-        person.adel = names.find('ADEL').text
+        person.adel = names[-1].find('ADEL').text
+
+        surnames_list = []
+        firstnames_list = []
+
+        for name in names:
+            surname = name.find('NACHNAME').text
+
+            if isinstance(surname, str):
+                surnames_list.append(surname)
+
+                if len(surname.split(' ')) > 1:
+                    surnames_list.append(surname.split(" ")[-1])
+
+            firstname = name.find('VORNAME').text
+
+            if isinstance(firstname, str):
+                firstnames_list.append(firstname)
+
+                if len(firstname.split(' ')) > 1:
+                    for fname in firstname.split(" "):
+                        if len(fname) > 2:
+                            firstnames_list.append(fname)
+
+        person.alt_surnames = list(set(surnames_list))
+        person.alt_first_names = list(set(firstnames_list))
 
         if verbosity > 0:
             # print name

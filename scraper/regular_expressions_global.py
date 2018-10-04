@@ -67,7 +67,7 @@ ANY_PARTY = re.compile('({})'.format('|'.join([x.pattern.strip() for x in PARTIE
 # longest mdb name has 44 chars
 PARTY_MEMBER = re.compile('\s*(.{4,50}?\(([^\(\)]*)\)):\s*')
 PRESIDENT = re.compile('\s*((Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?)\s.{5,50}?):\s*')
-STAATSSEKR = re.compile('\s*([^\n]{4,50}?, (Parl\s?\.\s)?Staatssekretär.*?):\s*', re.DOTALL)
+STAATSSEKR = re.compile('\s*([^\n]{4,50}?, (Par[li]\s?\.\s)?Staatssekretär.*?):\s*', re.DOTALL)
 STAATSMINISTER = re.compile('\s*([^\n]{4,50}?, Staatsminister.*?):\s*', re.DOTALL)
 MINISTER = re.compile('\s*([^\n]{4,50}?, Bundesminister.*?):\s*', re.DOTALL)
 WEHRBEAUFTRAGTER = re.compile('\s*(.{4,50}?, Wehrbeauftragter.*?):\s*')

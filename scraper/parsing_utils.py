@@ -129,35 +129,36 @@ def find_person_in_db(name, add_info=dict(), create=True,
             rquery = query.filter(party__alt_names__contains=[party])
             if len(rquery) == 1:
                 return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
-            elif len(query) > 1:
+            elif len(rquery) > 1:
                 query = rquery
 
         if ortszusatz:
             rquery = query.filter(ortszusatz=ortszusatz)
             if len(rquery) == 1:
                 return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
-            elif len(query) > 1:
+            elif len(rquery) > 1:
                 query = rquery
 
         if title:
             rquery = query.filter(title=title)
             if len(rquery) == 1:
                 return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
-            elif len(query) > 1:
+            elif len(rquery) > 1:
                 query = rquery
 
         if wp:
             rquery = query.filter(in_parlperiod__contains=[wp])
             if len(rquery) == 1:
                 return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
-            elif len(query) > 1:
+            elif len(rquery) > 1:
                 query = rquery
 
         print("! Warning: Could not distinguish between persons!")
         print("For name string: {}".format(name))
         print("first name: {}, surname: {}".format(firstname, surname))
         print("title: {}, party: {}, position: {}, ortszusatz: {}".format(title, party, position, ortszusatz))
-        print("Entries: {}".format([pers.clean_name for pers in query]))
+        print("Query: {}".format(query))
+        print("Clean names: {}".format([pers.clean_name for pers in query]))
 
         if first_entry_for_unresolved_ambiguity:
             print('Taking first entry of ambiguous results')
@@ -187,10 +188,8 @@ def find_person_in_db(name, add_info=dict(), create=True,
                 person.ortszusatz = ortszusatz
 
             if position:
-                position_set = set(person.positions)
-                person.positions = list(position_set.union({position}))
-
-            # use position with data model "Post" ?
+                person.positions = [position]
+                # use position with data model "Post" ?
 
             if 'session' in add_info.keys():
                 session_str = "{sn:03d}".format(sn=add_info['session'])

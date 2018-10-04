@@ -193,11 +193,21 @@ class parse_tei_items(object):
                 if speaker is None:
                     print(sp.get("who"))
 
+                speaker_role_set = pm.SpeakerRole.objects.filter(alt_names__contains=[sp.get("role")])
+                if len(speaker_role_set) < 1:
+                    speaker_role = pm.SpeakerRole(name=sp.get("role"), alt_names=[sp.get("role")])
+                    speaker_role.save()
+                else:
+                    speaker_role = speaker_role_set.first()
+                    if len(speaker_role_set) > 1:
+                        print("Warning: several speaker roles matching")
+
                 text = []
 
                 ut = pm.Utterance(
                     document=self.doc,
-                    speaker=speaker)
+                    speaker=speaker,
+                    speaker_role=speaker_role)
                 ut.save()
 
                 for c in sp.getchildren():
@@ -272,7 +282,7 @@ if __name__ == '__main__':
 
     # go through all scripts iteratively
     for wp in range(13, 12, -1):
-        for session in range(1, 300):
+        for session in range(0, 300):
 
             xml_file = os.path.join(tei_path, "{wp:02d}/BT_{wp:02d}_{sn:03d}.xml".format(wp=wp, sn=session))
 

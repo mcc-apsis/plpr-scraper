@@ -470,10 +470,31 @@ def parse_transcript(file, verbosity=1):
             warnings_counter2 += 1
             continue
 
-        ut = pm.Utterance(
-            document=doc,
-            speaker=per
-        )
+        position = PERSON_POSITION.search(contrib['speaker'])
+
+        if position:
+            role_description = position.group(0)
+
+            speaker_role_set = pm.SpeakerRole.objects.filter(alt_names__contains=[role_description])
+            if len(speaker_role_set) < 1:
+                speaker_role = pm.SpeakerRole(name=role_description, alt_names=[role_description])
+                speaker_role.save()
+            else:
+                speaker_role = speaker_role_set.first()
+                if len(speaker_role_set) > 1:
+                    print("Warning: several speaker roles matching")
+
+            ut = pm.Utterance(
+                document=doc,
+                speaker=per,
+                speaker_role=speaker_role
+            )
+        else:
+            ut = pm.Utterance(
+                document=doc,
+                speaker=per
+            )
+
         ut.save()
         utterance_counter += 1
 
@@ -589,7 +610,6 @@ if __name__ == '__main__':
     sys.stdout = Logger()
 
     # settings for parsing
-    delete_protokolle = False
     delete_additional_persons = False
     delete_all = False
     verbosity = 0
@@ -614,20 +634,13 @@ if __name__ == '__main__':
     count_warnings_docs = 0
     count_warnings_sum = 0
 
-    wps = range(16, 12, -1)
+    wps = range(12, 1, -1)
     sessions = range(1, 300)
 
     print("start parsing...")
     for wp in wps:
         collection = "pp{wp:02d}-data.zip".format(wp=wp)
         print(collection)
-
-        if delete_protokolle:
-            print("Deleting all documents, utterances, paragraphs and interjections from wp {}".format(wp))
-            pm.Interjection.objects.filter(paragraph_id__utterance_id__document_id__parlperiod_id__n=wp).delete()
-            pm.Paragraph.objects.filter(utterance_id__document_id__parlperiod_id__n=wp).delete()
-            pm.Utterance.objects.filter(document_id__parlperiod_id__n=wp).delete()
-            pm.Document.objects.filter(parlperiod_id__n=wp).delete()
 
         archive = zipfile.ZipFile(os.path.join(data_dir, collection), 'r')
         print("loading files from {}".format(collection))
@@ -637,6 +650,10 @@ if __name__ == '__main__':
             filename = "{wp:02d}{s:03d}.xml".format(wp=wp, s=session)
             if filename in filelist:
 
+                # delete old protocol
+                pm.Document.objects.filter(parlperiod__n=wp, sitting=session,
+                                           text_source="from https://www.bundestag.de/service/opendata "
+                                                       "(scans of pdfs with xml metadata)").delete()
                 f = archive.open(filename)
                 print(f)
                 parser_errors, parser_warnings = parse_transcript(f, verbosity=verbosity)
