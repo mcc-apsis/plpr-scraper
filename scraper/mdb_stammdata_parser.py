@@ -398,7 +398,7 @@ def parse_mdb_data(verbosity=0):
 
 
 if __name__ == '__main__':
-    delete_all = True
+    delete_all = False
     if delete_all:
         # to delete all existing entries for constituencies, partylists, seats and persons
         Constituency.objects.all().delete()

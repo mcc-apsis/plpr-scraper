@@ -59,6 +59,15 @@ END_MARK = re.compile('(\(Schluss:.\d{1,2}\s?.\d{1,2}.Uhr\).*|\(*Schluss der Sit
 HEADER_MARK = re.compile('\d{0,6}\s*Deutscher Bundestag\s*[–\-]\s*\d{1,2}\.\s*Wahlperiode\s*[–\-]\s*\d{1,4}\. Sitzung.\s*(Bonn|Berlin),'
                          '|\s*\([A-Z]\)(\s*\([A-Z]\))*\s*$|\d{1,6}\s*$|^\s*\([A-Z]\)\s\)$|^\s*\([A-Z]$|^\s*[A-Z]\)$')
 
+# from normdatei.parties
+PARTIES_REGEX = {
+    'cducsu': re.compile(' cdu ?(csu)?'),
+    'spd': re.compile(' spd'),
+    'linke': re.compile(' (die|der|den) linken?| pds'),
+    'fdp': re.compile(' fdp|F.D.P.'),
+    'gruene': re.compile(' bund ?nis\-?(ses)? ?90 die gru ?nen'),
+}
+
 ANY_PARTY = re.compile('({})'.format('|'.join([x.pattern.strip() for x in PARTIES_REGEX.values()])))
 
 # speaker type matches
@@ -101,13 +110,3 @@ ABG = 'Abg\.\s*(.{4,50}?)(\[[\wäöüßÄÖÜ /]*\])'
 INHYPHEN = re.compile(r'([a-zäöüß])-\s?([a-zäöüß])', re.U)
 
 FP_REMOVE = re.compile(u'(^.*Dr.?( h.? ?c.?)?| (von( der)?)| [A-Z]\. )')
-
-
-# from normdatei.parties
-PARTIES_REGEX = {
-    'cducsu': re.compile(' cdu ?(csu)?'),
-    'spd': re.compile(' spd'),
-    'linke': re.compile(' (die|der|den) linken?| pds'),
-    'fdp': re.compile(' fdp|F.D.P.'),
-    'gruene': re.compile(' bund ?nis\-?(ses)? ?90 die gru ?nen'),
-}

@@ -13,9 +13,13 @@ import platform
 
 if platform.node() == "mcc-apsis":
     sys.path.append('/home/muef/tmv/BasicBrowser/')
+    tei_path = "/home/muef/GermaParlTEI-master"
+
 else:
     # local paths
     sys.path.append('/media/Data/MCC/tmv/BasicBrowser/')
+    tei_path = "/media/Data/MCC/Parliament Germany/GermaParlTEI-master"
+
 
 #sys.path.append('/home/galm/software/django/tmv/BasicBrowser/')
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "BasicBrowser.settings")
@@ -244,7 +248,6 @@ if __name__ == '__main__':
 
     single_doc = False
     replace_docs = False
-    tei_path = "/media/Data/MCC/Parliament Germany/GermaParlTEI-master"
 
     delete_all = False
     delete_additional_persons = False
