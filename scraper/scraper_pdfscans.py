@@ -11,8 +11,6 @@ from xml.etree import ElementTree
 from urllib.parse import urljoin
 # Extract agenda numbers not part of normdatei
 from normality import normalize
-from normdatei.text import fingerprint  # , extract_agenda_numbers
-from normdatei.parties import search_party_names
 from sqlalchemy import create_engine, Column, Integer, String, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -40,7 +38,7 @@ import parliament.models as pm
 from parliament.tasks import do_search
 import cities.models as cmodels
 
-from parsing_utils import dehyphenate, find_person_in_db, POI, clean_text, correct_pdf_parsing_errors
+from parsing_utils import dehyphenate, find_person_in_db, POI, clean_text, correct_pdf_parsing_errors, search_party_names
 from regular_expressions_global import *
 
 import pprint
@@ -634,7 +632,7 @@ if __name__ == '__main__':
     count_warnings_docs = 0
     count_warnings_sum = 0
 
-    wps = range(12, 1, -1)
+    wps = range(1, 0, -1)
     sessions = range(1, 300)
 
     print("start parsing...")

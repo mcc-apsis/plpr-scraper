@@ -1,6 +1,4 @@
 import re
-from normdatei.parties import PARTIES_REGEX
-
 
 # regex notes:
 # . matches anything except newline (if DOTALL flag is raised, it also matches newline)
@@ -103,3 +101,13 @@ ABG = 'Abg\.\s*(.{4,50}?)(\[[\wäöüßÄÖÜ /]*\])'
 INHYPHEN = re.compile(r'([a-zäöüß])-\s?([a-zäöüß])', re.U)
 
 FP_REMOVE = re.compile(u'(^.*Dr.?( h.? ?c.?)?| (von( der)?)| [A-Z]\. )')
+
+
+# from normdatei.parties
+PARTIES_REGEX = {
+    'cducsu': re.compile(' cdu ?(csu)?'),
+    'spd': re.compile(' spd'),
+    'linke': re.compile(' (die|der|den) linken?| pds'),
+    'fdp': re.compile(' fdp|F.D.P.'),
+    'gruene': re.compile(' bund ?nis\-?(ses)? ?90 die gru ?nen'),
+}

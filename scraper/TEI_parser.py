@@ -7,7 +7,6 @@ import random
 import re
 import sys
 import datetime
-from normdatei.parties import search_party_names
 
 import django
 import platform
@@ -281,21 +280,21 @@ if __name__ == '__main__':
         exit()
 
     # go through all scripts iteratively
-    for wp in range(13, 12, -1):
+    for pperiod in range(13, 12, -1):
         for session in range(0, 300):
 
-            xml_file = os.path.join(tei_path, "{wp:02d}/BT_{wp:02d}_{sn:03d}.xml".format(wp=wp, sn=session))
+            xml_file = os.path.join(tei_path, "{wp:02d}/BT_{wp:02d}_{sn:03d}.xml".format(wp=pperiod, sn=session))
 
             if os.path.isfile(xml_file):
                 print("reading from {}".format(xml_file))
 
                 xtree = etree.parse(xml_file)
                 if replace_docs:
-                    pm.Document.objects.filter(parlperiod__n=wp, sitting=session).delete()
-                pm.Document.objects.filter(parlperiod__n=wp, sitting=session,
+                    pm.Document.objects.filter(parlperiod__n=pperiod, sitting=session).delete()
+                pm.Document.objects.filter(parlperiod__n=pperiod, sitting=session,
                                            text_source__startswith="GermaParlTEI from ").delete()
 
-                parser = parse_tei_items(xtree, period=wp, session=session)
+                parser = parse_tei_items(xtree, period=pperiod, session=session)
                 parser.run()
 
     print("Done")

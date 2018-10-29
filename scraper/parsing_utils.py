@@ -1,13 +1,27 @@
 
 import re
 from regular_expressions_global import *
-from normdatei.parties import search_party_names
 from normality import normalize
 
 # import from appended path
 import parliament.models as pm
 import cities.models as cmodels
 
+
+# copied from normdatei.parties
+def search_party_names(text):
+    if text is None:
+        return
+    text = PARTIES_SPLIT.split(text)
+    text = normalize(text[0])
+    parties = set()
+    for party, rex in PARTIES_REGEX.items():
+        if rex.findall(text):
+            parties.add(party)
+    if not len(parties):
+        return
+    parties = ':'.join(sorted(parties))
+    return parties
 
 def dehyphenate(text, nl=False):
     DEHYPHENATE = re.compile('(?<=[A-Za-zäöüß])(-\s*)\n(?!\s*[A-ZÄÖÜ][a-zäöüß])', re.M)

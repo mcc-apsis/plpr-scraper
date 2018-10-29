@@ -11,8 +11,6 @@ from lxml import html
 from urllib.parse import urljoin
 # Extract agenda numbers not part of normdatei
 from normality import normalize
-from normdatei.text import clean_text, fingerprint#, extract_agenda_numbers
-from normdatei.parties import search_party_names, PARTIES_REGEX
 from bs4 import BeautifulSoup
 import platform
 import pandas as pd
