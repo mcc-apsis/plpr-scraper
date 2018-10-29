@@ -60,6 +60,7 @@ HEADER_MARK = re.compile('\d{0,6}\s*Deutscher Bundestag\s*[–\-]\s*\d{1,2}\.\s*
                          '|\s*\([A-Z]\)(\s*\([A-Z]\))*\s*$|\d{1,6}\s*$|^\s*\([A-Z]\)\s\)$|^\s*\([A-Z]$|^\s*[A-Z]\)$')
 
 # from normdatei.parties
+PARTIES_SPLIT = re.compile(r'(, (auf|an|zur|zum)( die| den )?(.* gewandt)?)')
 PARTIES_REGEX = {
     'cducsu': re.compile(' cdu ?(csu)?'),
     'spd': re.compile(' spd'),
