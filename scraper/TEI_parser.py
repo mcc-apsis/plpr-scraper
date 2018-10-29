@@ -188,7 +188,7 @@ class parse_tei_items(object):
                     print("TEI current speaker: {}".format(sp.get("who")))
                 # match speaker to database:
                 info_dict = dict(sp.attrib)
-                info_dict['wp'] = wp
+                info_dict['wp'] = self.wp
                 info_dict['session'] = self.session
                 info_dict['source_type'] = 'TEI/SP'
                 speaker = find_person_in_db(sp.get("who"), add_info=info_dict, verbosity=self.v)
