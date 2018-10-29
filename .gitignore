@@ -61,6 +61,6 @@ data.sqlit*
 data/akomantoso/
 .idea
 data/out
-data
+data/txt
 venv-plpr
 venv-plpr3

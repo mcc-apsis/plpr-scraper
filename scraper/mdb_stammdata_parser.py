@@ -20,10 +20,13 @@ import pprint
 if platform.node() == "mcc-apsis":
     sys.path.append('/home/muef/tmv/BasicBrowser/')
     data_dir = '/home/muef/plpr-scraper/plenarprotokolle'
+    country_table_file = "/home/muef/plpr-scraper/data/country-translations.csv"
 else:
     # local paths
     sys.path.append('/media/Data/MCC/tmv/BasicBrowser/')
     data_dir = '/media/Data/MCC/Parliament Germany/Plenarprotokolle'
+    country_table_file = "/media/Data/MCC/Parliament Germany/country-translations.csv"
+
 
 # imports and settings for django and database
 # --------------------------------------------
@@ -45,7 +48,7 @@ from urllib.request import urlopen
 map_countries = True
 
 if map_countries:
-    country_table = pd.read_csv("/media/Data/MCC/Parliament Germany/countries.csv", sep=";")
+    country_table = pd.read_csv(country_table_file, sep=";")
     country_special = {"Russland": "Russia",
                        "CSSR": "Czechia",
                        "USA": "United States",
