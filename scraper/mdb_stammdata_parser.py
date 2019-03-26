@@ -17,15 +17,15 @@ import pandas as pd
 
 import pprint
 
-if platform.node() == "mcc-apsis":
-    sys.path.append('/home/muef/tmv/BasicBrowser/')
-    data_dir = '/home/muef/plpr-scraper/plenarprotokolle'
-    country_table_file = "/home/muef/plpr-scraper/data/country_translations.csv"
+if platform.node() == "srv-mcc-apsis":
+    sys.path.append('/home/leey/tmv/BasicBrowser/')
+    data_dir = '/home/leey/plpr-scraper/scraper/19wahlperiode'
+    country_table_file = "/home/leey/plpr-scraper/data/country_translations.csv"
 else:
     # local paths
-    sys.path.append('/media/Data/MCC/tmv/BasicBrowser/')
-    data_dir = '/media/Data/MCC/Parliament Germany/Plenarprotokolle'
-    country_table_file = "/media/Data/MCC/Parliament Germany/country_translations.csv"
+    sys.path.append('/home/Documents/Data/tmv/BasicBrowser/')
+    data_dir = '/home/Documents/Data/plpr-scraper/data/19wahlperiode'
+    country_table_file = "/Documents/Data/plpr-scraper/data/country_translations.csv"
 
 
 # imports and settings for django and database
@@ -69,7 +69,7 @@ if map_countries:
                        }
 
 
-MDB_LINK = 'http://www.bundestag.de/blob/472878/c1a07a64c9ea8c687df6634f2d9d805b/mdb-stammdaten-data.zip'
+MDB_LINK = 'https://www.bundestag.de/resource/blob/472878/e207ab4b38c93187c6580fc186a95f38/MdB-Stammdaten-data.zip'
 MDB_FNAME = '../data/mdbs/MDB_STAMMDATEN.XML'
 
 LANDS = {
@@ -432,4 +432,3 @@ if __name__ == '__main__':
             p, created = Party.objects.get_or_create(name=pc['party'])
             p.colour = pc['colour']
             p.save()
-
