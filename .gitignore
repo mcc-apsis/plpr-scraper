@@ -56,6 +56,10 @@ docs/_build/
 # PyBuilder
 target/
 
+# Jupyter Notebook
+.ipynb_checkpoints
+scraper/.ipynb_checkpoints
+
 data.sqlit*
 .DS_Store
 data/akomantoso/
