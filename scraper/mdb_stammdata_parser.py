@@ -20,12 +20,12 @@ import pprint
 if platform.node() == "srv-mcc-apsis":
     sys.path.append('/home/leey/tmv/BasicBrowser/')
     data_dir = '/home/leey/plpr-scraper/scraper/19wahlperiode'
-    country_table_file = "/home/leey/plpr-scraper/data/country_translations.csv"
+    country_table_file = '/home/leey/plpr-scraper/data/country_translations.csv'
 else:
     # local paths
     sys.path.append('/home/Documents/Data/tmv/BasicBrowser/')
     data_dir = '/home/Documents/Data/plpr-scraper/data/19wahlperiode'
-    country_table_file = "/Documents/Data/plpr-scraper/data/country_translations.csv"
+    country_table_file = '/Documents/Data/plpr-scraper/data/country_translations.csv'
 
 
 # imports and settings for django and database
@@ -425,7 +425,7 @@ if __name__ == '__main__':
             {'party':'spd','colour':'#EB001F'},
             {'party':'linke','colour':'#8C3473'},
             {'party':'fdp','colour':'#FFED00'},
-            {'party':'afd','colour':'#cducsu'},
+            {'party':'afd','colour':'#009EE0'},
             {'party':'gruene','colour':'#64A12D'},
         ]
         for pc in pcolours:

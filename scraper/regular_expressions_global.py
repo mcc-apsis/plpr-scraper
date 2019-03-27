@@ -67,6 +67,7 @@ PARTIES_REGEX = {
     'linke': re.compile(' (die|der|den) linken?| pds'),
     'fdp': re.compile(' fdp|F.D.P.'),
     'gruene': re.compile(' bund ?nis\-?(ses)? ?90 die gru ?nen'),
+    'afd': re.compile('AfD')
 }
 
 ANY_PARTY = re.compile('({})'.format('|'.join([x.pattern.strip() for x in PARTIES_REGEX.values()])))
