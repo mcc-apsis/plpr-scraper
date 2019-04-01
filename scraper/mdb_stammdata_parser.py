@@ -399,6 +399,8 @@ def parse_mdb_data(verbosity=0):
 
 if __name__ == '__main__':
     delete_all = False
+    delete_persons = False
+    
     if delete_all:
         # to delete all existing entries for constituencies, partylists, seats and persons
         Constituency.objects.all().delete()
@@ -407,7 +409,7 @@ if __name__ == '__main__':
         Seat.objects.all().delete()
         Person.objects.all().delete()
 
-    else:
+    elif delete_persons:
         Person.objects.filter(information_source="MDB Stammdata").delete()
 
     # getting the data
