@@ -23,9 +23,9 @@ if platform.node() == "srv-mcc-apsis":
     country_table_file = '/home/leey/plpr-scraper/data/country_translations.csv'
 else:
     # local paths
-    sys.path.append('/home/Documents/Data/tmv/BasicBrowser/')
-    data_dir = '/home/Documents/Data/plpr-scraper/data/19wahlperiode'
-    country_table_file = '/Documents/Data/plpr-scraper/data/country_translations.csv'
+    sys.path.append('/home/leey/Documents/Data/tmv/BasicBrowser/')
+    data_dir = '/home/leey/Documents/Data/plpr-scraper/data/19wahlperiode'
+    country_table_file = '/home/leey/Documents/Data/plpr-scraper/data/country_translations.csv'
 
 
 # imports and settings for django and database
@@ -70,7 +70,7 @@ if map_countries:
 
 
 MDB_LINK = 'https://www.bundestag.de/resource/blob/472878/e207ab4b38c93187c6580fc186a95f38/MdB-Stammdaten-data.zip'
-MDB_FNAME = '../data/mdbs/MDB_STAMMDATEN.XML'
+MDB_FNAME = './mdbs/MDB_STAMMDATEN.XML'
 
 LANDS = {
     'BWG': "Baden-Württemberg",
@@ -182,7 +182,11 @@ def fetch_mdb_data():
 def german_date(str):
     if str is None:
         return None
-    return datetime.datetime.strptime(str,"%d.%m.%Y").date()
+    try:
+        return datetime.datetime.strptime(str,"%d.%m.%Y").date()
+    except ValueError:
+        return datetime.datetime.strptime(str,"%Y").date()
+        
 
 
 def parse_mdb_data(verbosity=0):
@@ -285,8 +289,8 @@ def parse_mdb_data(verbosity=0):
             person.gender = Person.FEMALE
         else:
             print(biodata.find('GESCHLECHT').text)
-        person.family_status = biodata.find('FAMILIENSTAND').text
-        person.religion = biodata.find('RELIGION').text
+        #person.family_status = biodata.find('FAMILIENSTAND').text
+        #person.religion = biodata.find('RELIGION').text
         person.occupation = biodata.find('BERUF').text
         person.short_bio = biodata.find('VITA_KURZ').text
 
@@ -304,7 +308,8 @@ def parse_mdb_data(verbosity=0):
         person.positions = ['parliamentarian']
         person.information_source = "MDB Stammdata"
         person.save()
-
+        
+            
         wp_list = []
 
         # loop over wahlperioden
