@@ -7,12 +7,10 @@ import re
 import sys
 import datetime as dt
 
-#sys.path.append('/home/leey/venv/lib/python3.7/site-packages')
-
 import django
 import platform
 
-if platform.node() == "mcc-apsis":
+if platform.node() == "srv-mcc-apsis":
     sys.path.append('/home/leey/tmv/BasicBrowser/')
     xml_path = "/home/leey/plpr-scraper/data/19wahlperiode"
 
@@ -65,7 +63,7 @@ class parse_tei_items(object):
 
     def __init__(self, xtree, v=1, period=None, session=None):
         self.v = v
-        self.divs = xtree.findall("//tagesordnungspunkt")
+        self.divs = xtree.findall("//rede")
 
         self.wp = int(xtree.xpath('vorspann/kopfdaten/plenarprotokoll-nummer/wahlperiode/text()')[0])
         self.session = int(xtree.xpath('vorspann/kopfdaten/plenarprotokoll-nummer/sitzungsnr/text()')[0])
@@ -180,11 +178,11 @@ class parse_tei_items(object):
         self.get_or_create_objects()
 
         ### start parsing of speeches
-        for div in self.divs: # item in list of <tagesordnungspunkt>
+        for div in self.divs: # speech in list of <rede>
             if self.v > 1:
-                print("div id: {}".format(div.get("top-id")))
+                print("speech id: {}".format(div.get("top-id")))
 
-            for uts in div.iter('rede'): # <p> in <rede>
+            for uts in div.iter(): # <p> in <rede>
                 for redner in uts.xpath("p[@klasse='redner']/redner"):
                     vorname = redner.xpath('name/vorname/text()')
                     nachname = redner.xpath('name/nachname/text()')
@@ -216,34 +214,35 @@ class parse_tei_items(object):
                 #    if len(speaker_role_set) > 1:
                 #       print("Warning: several speaker roles matching")
 
-                text = []
+                    text = []
 
-                ut = pm.Utterance(
-                    document=self.doc,
-                    speaker=speaker,
-                    #speaker_role=speaker_role
-                )
-                ut.save()
+                    ut = pm.Utterance(
+                        document=self.doc,
+                        speaker=speaker,
+                        #speaker_role=speaker_role
+                    )
+                    ut.save()
 
-                for c in uts.iter():
-                    if self.v > 1:
-                        print("{}: {}".format(c.tag, c.text))
-                    if c.tag == "p" and c.get("klasse") != "redner":
-                        if c.text:
-                            text.append(c.text)
-                    elif c.tag == "name":
-                        if text:
-                            para = self.create_paragraph(text, ut)
-                            text = []
-                    elif c.tag == "kommentar":
-                        if text:
-                            para = self.create_paragraph(text, ut)
-                            text = []
-                        self.add_interjections(c.text, para)
-                    #else:
-                    #    print("unknown tag")
-                if text:
-                    para = self.create_paragraph(text, ut)
+                    speech_list = ['J','O','J_1']
+                    for c in uts.iter():
+                        if self.v > 1:
+                            print("{}: {}".format(c.tag, c.text))
+                        if c.tag == "p" and c.get("klasse") in speech_list:
+                            if c.text:
+                                text.append(c.text)
+                        elif c.tag == "name":
+                            if text:
+                                para = self.create_paragraph(text, ut)
+                                text = []
+                        elif c.tag == "kommentar":
+                            if text:
+                                para = self.create_paragraph(text, ut)
+                                text = []
+                            self.add_interjections(c.text, para)
+                        #else:
+                        #    print("unknown tag")
+                    if text:
+                        para = self.create_paragraph(text, ut)
 
 
 # =================================================================================================================
@@ -253,7 +252,7 @@ if __name__ == '__main__':
 
     sys.stdout = Logger()
 
-    single_doc = False
+    single_doc = True
     replace_docs = False
 
     delete_all = False

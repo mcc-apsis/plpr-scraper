@@ -299,4 +299,4 @@ def fingerprint(name):
     if name is None:
         return
     name = FP_REMOVE.sub(' ', name.strip())
-return normalize(name).replace(' ', '-')
+    return normalize(name).replace(' ', '-')
