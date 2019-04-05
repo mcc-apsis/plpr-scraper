@@ -1,3 +1,7 @@
+# scraper for importing protocols from the German Bundestag in TEI format into the django parliament app
+# uses TEI documents from the following source:
+# https://github.com/PolMine/GermaParlTEI
+
 import os
 import difflib
 import zipfile

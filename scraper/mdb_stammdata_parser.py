@@ -1,4 +1,9 @@
 # coding: utf-8
+
+# script for importing personal information from German members of parliament into the django parliament app
+# uses data from the following xml file:
+# https://www.bundestag.de/resource/blob/472878/e207ab4b38c93187c6580fc186a95f38/MdB-Stammdaten-data.zip
+
 from __future__ import print_function
 import os, sys
 import django
