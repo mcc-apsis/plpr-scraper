@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import os
 import difflib
 import zipfile
@@ -252,7 +255,7 @@ if __name__ == '__main__':
 
     sys.stdout = Logger()
 
-    single_doc = True
+    single_doc = False
     replace_docs = False
 
     delete_all = False
@@ -290,7 +293,7 @@ if __name__ == '__main__':
 
     # go through all scripts iteratively
     pperiod = 19
-    for session in range(2, 300):
+    for session in range(86, 300):
 
         xml_file = os.path.join(xml_path, "{wp:02d}{sn:03d}-data.xml".format(wp=pperiod, sn=session))
 
