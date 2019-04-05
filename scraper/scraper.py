@@ -1,4 +1,9 @@
 # coding: utf-8
+
+# old version of the scraper for a specific set of documents from the German Bundestag starting with the 17. period
+# available at
+# https://www.bundestag.de/ajax/filterlist/de/dokumente/protokolle/plenarprotokolle/plenarprotokolle/455046-455046/
+
 from __future__ import print_function
 import os, sys
 import django
