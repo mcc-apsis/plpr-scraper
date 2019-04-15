@@ -1,4 +1,9 @@
 # coding: utf-8
+
+# parser for pdf scans inside xml-files from German Bundestag / Opendata for periods 1 - 18
+# into the django parliament app
+# https://www.bundestag.de/services/opendata
+
 from __future__ import print_function
 import os, sys
 import django
