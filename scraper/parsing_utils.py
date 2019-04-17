@@ -244,7 +244,7 @@ class POI(object):
             if len(speaker) > 1:
                 self.speakers.append(speaker[0].strip())
             else:
-                self.parties = search_party_names(text)
+                self.parties = search_party_names(speaker)
             self.poitext = sinfo[1].strip()
             self.type = pm.Interjection.SPEECH
         elif "Beifall" in text:
@@ -300,3 +300,19 @@ def fingerprint(name):
         return
     name = FP_REMOVE.sub(' ', name.strip())
     return normalize(name).replace(' ', '-')
+
+
+def search_person_party(text):
+    """
+    returns the party of a speaker from an input string (from raw text)
+    """
+    if text is None:
+        return
+    text = normalize(text)
+    # identify correct group of text in name
+
+    # find party
+    for party, rex in PARTIES_REGEX_PDF.items():
+        if rex.findall(text):
+            person_party = party
+            return person_party

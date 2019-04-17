@@ -27,8 +27,8 @@ if platform.node() == "mcc-apsis":
     data_dir = '/home/muef/plpr-scraper/plenarprotokolle'
 else:
     # local paths
-    sys.path.append('/media/Data/MCC/tmv/BasicBrowser/')
-    data_dir = '/media/Data/MCC/Parliament Germany/Plenarprotokolle'
+    sys.path.append('/home/leey/Documents/Data/tmv/BasicBrowser/')
+    data_dir = '/home/leey/Documents/Data/Plenarprotokolle'
 
 # imports and settings for django and database
 # --------------------------------------------
@@ -43,7 +43,8 @@ import parliament.models as pm
 from parliament.tasks import do_search
 import cities.models as cmodels
 
-from parsing_utils import dehyphenate, find_person_in_db, POI, clean_text, correct_pdf_parsing_errors, search_party_names
+from parsing_utils import dehyphenate, POI, clean_text, correct_pdf_parsing_errors, search_party_names
+from find_person_in_db_pdf import find_person_in_db
 from regular_expressions_global import *
 
 import pprint
@@ -289,7 +290,7 @@ class SpeechParser(object):
 
                 role = line.strip().split(' ')[0]
                 self.speaker = speaker_match.group(1)
-                self.speaker_party = search_party_names(line.strip().split(':')[0])
+                #self.speaker_party = search_party_names(line.strip().split(':')[0])
                 self.chair = role in CHAIRS
                 continue
 
@@ -462,6 +463,14 @@ def parse_transcript(file, verbosity=1):
 
         if contrib['speaker']:
             info_dict = {'wp': wp, 'session': session, 'source_type': 'PDF/SP'}
+            #try:
+            #    speaker_party = PARTY_MEMBER_PDF.match(contrib['speaker']).group(3)
+            #    speaker_party = normalize(speaker_party).replace(' ', '')
+            #    info_dict['party'] = speaker_party
+            #    speaker_ortszusatz = PARTY_MEMBER_PDF.match(contrib['speaker']).group(2)
+            #    info_dict['ortszusatz'] = speaker_ortszusatz
+            #except AttributeError:
+            #    pass
             per = find_person_in_db(contrib['speaker'], add_info=info_dict, verbosity=verbosity)
         else:
             print("! Warning: No speaker given, not saving the following contribution: {}".format(contrib))
@@ -542,6 +551,14 @@ def parse_transcript(file, verbosity=1):
                 if ij.speakers:
                     for person in ij.speakers:
                         info_dict = {'wp': wp, 'session': session, 'source_type': 'PDF/POI'}
+                        #try:
+                        #    speaker_party = PARTY_MEMBER_PDF.match(contrib['speaker']).group(3)
+                        #    speaker_party = normalize(speaker_party).replace(' ', '')
+                        #    info_dict['party'] = speaker_party
+                        #    speaker_ortszusatz = PARTY_MEMBER_PDF.match(contrib['speaker']).group(2)
+                        #    info_dict['ortszusatz'] = speaker_ortszusatz
+                        #except AttributeError:
+                        #    pass
                         per = find_person_in_db(person, add_info=info_dict, verbosity=verbosity)
                         if per is not None:
                             interjection.persons.add(per)
@@ -569,11 +586,11 @@ def parse_transcript(file, verbosity=1):
 
 # ==========================================================================================================
 # ==========================================================================================================
-
-def clear_db():
-    database = dataset.connect(db)
-    table = database['plpr']
-    table.delete()
+# what is this for?
+#def clear_db():
+#    database = dataset.connect(db)
+#    table = database['plpr']
+#    table.delete()
 
 # =================================================================================================================
 # =================================================================================================================
@@ -637,8 +654,8 @@ if __name__ == '__main__':
     count_warnings_docs = 0
     count_warnings_sum = 0
 
-    wps = range(1, 0, -1)
-    sessions = range(1, 300)
+    wps = range(12, 11, -1)
+    sessions = range(10, 11)
 
     print("start parsing...")
     for wp in wps:

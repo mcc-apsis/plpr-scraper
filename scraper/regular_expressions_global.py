@@ -67,13 +67,23 @@ PARTIES_REGEX = {
     'linke': re.compile(' (die|der|den) linken?| pds'),
     'fdp': re.compile(' fdp|F.D.P.'),
     'gruene': re.compile(' bund ?nis\-?(ses)? ?90 die gru ?nen'),
-    'afd': re.compile('AfD')
+    'afd': re.compile(' AfD')
+}
+
+PARTIES_REGEX_PDF = {
+    'cducsu': re.compile(' ?cdu ?(csu)?'),
+    'spd': re.compile(' ?spd'),
+    'linke': re.compile(' ?(die|der|den) linken?| pds'),
+    'fdp': re.compile(' ?fdp|F.D.P.'),
+    'gruene': re.compile(' ?bund ?nis\-?(ses)? ?90 die gru ?nen'),
+    'afd': re.compile(' ?AfD')
 }
 
 ANY_PARTY = re.compile('({})'.format('|'.join([x.pattern.strip() for x in PARTIES_REGEX.values()])))
 
 # speaker type matches
 # longest mdb name has 44 chars
+PARTY_MEMBER_PDF = re.compile('(.{4,50}?([\[\(].*[\]\)])?\s?([\[\(].*[\]\)]))?\s?:?')
 PARTY_MEMBER = re.compile('\s*(.{4,50}?\(([^\(\)]*)\)):\s*')
 PRESIDENT = re.compile('\s*((Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?)\s.{5,50}?):\s*')
 STAATSSEKR = re.compile('\s*([^\n]{4,50}?, (Par[li]\s?\.\s)?Staatssekretär.*?):\s*', re.DOTALL)
@@ -97,7 +107,7 @@ NAME_REMOVE = [u'\\[.*\\]|\\(.*\\)', u' de[sr]', u'Gegenrufe?', 'Weiterer Zuruf'
                'Beifall', ' bei der', u'\\d{1,20}', 'Widerspruch', 'Lachen', 'Heiterkeit']
 NAME_REMOVE = re.compile(u'(%s)' % '|'.join(NAME_REMOVE), re.U)
 
-PERSON_PARTY = re.compile('\s*(.{4,140})\s\((.*)\)$')
+PERSON_PARTY = re.compile('\s*(.{4,140})\s[\[\(](.*)[\]\)]$')
 TITLE = re.compile('[A-Z]?\.?\s*Dr\s?\.(\sh\.\s?c\.)?|Prof\.(\sDr\.)?(\sDr\.)?(h\.\s?c\.)?')
 
 TOP_MARK = re.compile('.*(?: rufe.*der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt)(.*)')
