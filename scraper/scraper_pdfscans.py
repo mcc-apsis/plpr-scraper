@@ -92,6 +92,7 @@ class SpeechParser(object):
         self.pars = []
         self.speaker = None
         self.speaker_party = None
+        self.speaker_ortszusatz = None
         self.warnings_counter = 0
 
     def get_date(self):
@@ -137,6 +138,7 @@ class SpeechParser(object):
         data = {
             'speaker': self.speaker,
             'speaker_party': self.speaker_party,
+            'ortszusatz': self.speaker_ortszusatz,
             'type': 'chair' if self.chair else 'speech',
             'pars': self.pars
         }
