@@ -99,12 +99,32 @@ def find_person_in_db(name, add_info=dict(), create=True,
         firstname = ''
 
     # find matching entry in database
-    query = pm.Person.objects.filter(alt_surnames__contains=[surname], in_parlperiod__contains=[wp])
-    # alt_first_names__contains=[firstname]
+    query = pm.Person.objects.filter(alt_surnames__contains=[surname])
+
     if len(query) == 1:
         return query.first()
 
     elif len(query) > 1:
+        rquery = query.filter(information_source="MDB Stammdata")
+        if len(rquery) == 1:
+            return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
+        elif len(rquery) > 1:
+            query = rquery
+
+        if wp:
+            rquery = query.filter(in_parlperiod__contains=[wp])
+            if len(rquery) == 1:
+                return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
+            elif len(rquery) > 1:
+                query = rquery
+
+        if firstname:  # empty string '' gives False
+            rquery = query.filter(alt_first_names__contains=[firstname])
+            if len(rquery) == 1:
+                return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
+            elif len(rquery) > 1:
+                query = rquery
+
         if party:
             rquery = query.filter(party__alt_names__contains=[party])
             if len(rquery) == 1:
@@ -125,13 +145,6 @@ def find_person_in_db(name, add_info=dict(), create=True,
                 return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
             elif len(rquery) > 1:
                 query = rquery
-
-#        if wp:
-#            rquery = query.filter(in_parlperiod__contains=[wp])
-#            if len(rquery) == 1:
-#                return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
-#            elif len(rquery) > 1:
-#                query = rquery
 
         print("! Warning: Could not distinguish between persons!")
         print("For name string: {}".format(name))

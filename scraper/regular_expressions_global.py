@@ -83,16 +83,17 @@ ANY_PARTY = re.compile('({})'.format('|'.join([x.pattern.strip() for x in PARTIE
 
 # speaker type matches
 # longest mdb name has 44 chars
-PARTY_MEMBER_PDF = re.compile('(.{4,50}?([\[\(].*[\]\)])?\s?([\[\(].*[\]\)]))?\s?:?')
+PARTY_MEMBER_PDF = re.compile('(.{4,50}?)([\[\(][^\(\)]*[\]\)])?\s?([\[\(][^\(\)]*[\]\)])\s?:')
 PARTY_MEMBER = re.compile('\s*(.{4,50}?\(([^\(\)]*)\)):\s*')
-PRESIDENT = re.compile('\s*((Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?)\s.{5,50}?):\s*')
-STAATSSEKR = re.compile('\s*([^\n]{4,50}?, (Par[li]\s?\.\s)?Staatssekretär.*?):\s*', re.DOTALL)
-STAATSMINISTER = re.compile('\s*([^\n]{4,50}?, Staatsminister.*?):\s*', re.DOTALL)
-MINISTER = re.compile('\s*([^\n]{4,50}?, Bundesminister.*?):\s*', re.DOTALL)
-WEHRBEAUFTRAGTER = re.compile('\s*(.{4,50}?, Wehrbeauftragter.*?):\s*')
-BUNDESKANZLER = re.compile('\s*(.{4,50}?, Bundeskanzler(in)?.*?):\s*')
-BEAUFTRAGT = re.compile('\s*(.{4,50}?, Beauftragter? der Bundes.*):\s*')
-BERICHTERSTATTER = re.compile('\s*(.{4,50}?, Berichterstatter(in)?.*?):\s*')
+PRESIDENT = re.compile('\s*((Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?)\s.{5,50}?)([\[\(][^\(\)]*[\]\)])?:\s*')
+STAATSSEKR = re.compile('\s*([^\n]{4,50}?)([\[\(][^\(\)]*[\]\)])?, (Par[li]\s?\.\s)?Staatssekretär.*?:\s*', re.DOTALL)
+STAATSMINISTER = re.compile('\s*([^\n]{4,50}?)([\[\(][^\(\)]*[\]\)])?, Staatsminister.*?:\s*', re.DOTALL)
+MINISTER = re.compile('\s*([^\n]{4,50}?)([\[\(][^\(\)]*[\]\)])?, Bundesminister.*?:\s*', re.DOTALL)
+WEHRBEAUFTRAGTER = re.compile('\s*(.{4,50}?)([\[\(][^\(\)]*[\]\)])?, Wehrbeauftragter.*?:\s*')
+BUNDESKANZLER = re.compile('\s*(.{4,50}?)([\[\(][^\(\)]*[\]\)])?, Bundeskanzler(in)?.*?:\s*')
+BEAUFTRAGT = re.compile('\s*(.{4,50}?)([\[\(][^\(\)]*[\]\)])?, Beauftragter? der Bundes.*:\s*')
+BERICHTERSTATTER = re.compile('\s*(.{4,50}?)([\[\(][^\(\)]*[\]\)])?, Berichterstatter(in)?.*?:\s*')
+# Note: ? after .{4,50} makes expression greedy (tries to match as little as possible)
 
 PERSON_POSITION = ['Vizepräsident(in)?', 'Präsident(in)?',
                    'Alterspräsident(in)?', 'Bundeskanzler(in)?',
@@ -108,6 +109,7 @@ NAME_REMOVE = [u'\\[.*\\]|\\(.*\\)', u' de[sr]', u'Gegenrufe?', 'Weiterer Zuruf'
 NAME_REMOVE = re.compile(u'(%s)' % '|'.join(NAME_REMOVE), re.U)
 
 PERSON_PARTY = re.compile('\s*(.{4,140})\s[\[\(](.*)[\]\)]$')
+PERSON_
 TITLE = re.compile('[A-Z]?\.?\s*Dr\s?\.(\sh\.\s?c\.)?|Prof\.(\sDr\.)?(\sDr\.)?(h\.\s?c\.)?')
 
 TOP_MARK = re.compile('.*(?: rufe.*der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt)(.*)')

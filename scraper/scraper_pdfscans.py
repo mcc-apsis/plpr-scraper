@@ -22,13 +22,16 @@ from sqlalchemy.orm import sessionmaker
 import platform
 import zipfile
 
-if platform.node() == "mcc-apsis":
+if platform.node() == "srv-mcc-apsis":
     sys.path.append('/home/muef/tmv/BasicBrowser/')
     data_dir = '/home/muef/plpr-scraper/plenarprotokolle'
 else:
     # local paths
     sys.path.append('/home/leey/Documents/Data/tmv/BasicBrowser/')
     data_dir = '/home/leey/Documents/Data/Plenarprotokolle'
+
+    sys.path.append('/media/Data/MCC/tmv/BasicBrowser/')
+    data_dir = '/media/Data/MCC/Parliamentary_protocols/Parliament Germany/Plenarprotokolle'
 
 # imports and settings for django and database
 # --------------------------------------------
@@ -240,14 +243,12 @@ class SpeechParser(object):
                         print("= setting stopword flag")
                     has_stopword = True
 
-            noparty = False
-
             for k in range(1,4):
                 lines = "\n".join(self.lines[self.line_number:self.line_number+k])
                 lines = dehyphenate(lines, nl=True)
                 # print(repr(lines)) # print with escape characters
                 speaker_match = (PRESIDENT.match(lines) or
-                                 PARTY_MEMBER.match(lines) or
+                                 PARTY_MEMBER_PDF.match(lines) or
                                  STAATSSEKR.match(lines) or
                                  STAATSMINISTER.match(lines) or
                                  WEHRBEAUFTRAGTER.match(lines) or
@@ -263,16 +264,8 @@ class SpeechParser(object):
                     self.line_number += k - 1
                     break
 
-            if PARTY_MEMBER.match(line):
-                if not ANY_PARTY.match(normalize(PARTY_MEMBER.match(line).group(2))):
-                    if verbosity > 1:
-                        print("= {} could not be identified".format(PARTY_MEMBER.match(line).group(2)))
-                        print("= set noparty flag")
-                    noparty = True
-
             if speaker_match is not None \
                     and not is_top \
-                    and not noparty \
                     and not has_stopword:
 
                 if self.speaker is None and self.text == [] and self.pars == []:
@@ -283,7 +276,6 @@ class SpeechParser(object):
                     if len(self.pars) < 1:
                         par = {
                             'text': dehyphenate(self.text),
-                            # default for strip: removing leading and ending white space
                             'pois': []
                         }
                         self.pars.append(par)
@@ -291,8 +283,10 @@ class SpeechParser(object):
                     yield self.emit()
 
                 role = line.strip().split(' ')[0]
-                self.speaker = speaker_match.group(1)
+                self.speaker = speaker_match.group(0).strip(' :')
                 #self.speaker_party = search_party_names(line.strip().split(':')[0])
+                self.speaker_party = search_person_party(line.strip().split(':')[0])
+                self.speaker_ortszusatz = speaker_match.group(2)
                 self.chair = role in CHAIRS
                 continue
 
@@ -464,15 +458,8 @@ def parse_transcript(file, verbosity=1):
         contrib.update(base_data)
 
         if contrib['speaker']:
-            info_dict = {'wp': wp, 'session': session, 'source_type': 'PDF/SP'}
-            #try:
-            #    speaker_party = PARTY_MEMBER_PDF.match(contrib['speaker']).group(3)
-            #    speaker_party = normalize(speaker_party).replace(' ', '')
-            #    info_dict['party'] = speaker_party
-            #    speaker_ortszusatz = PARTY_MEMBER_PDF.match(contrib['speaker']).group(2)
-            #    info_dict['ortszusatz'] = speaker_ortszusatz
-            #except AttributeError:
-            #    pass
+            info_dict = {'wp': wp, 'session': session, 'speaker_party': contrib['speaker_party'],
+                         'speaker_ortszusatz': contrib['speaker_ortszusatz'], 'source_type': 'PDF/SP'}
             per = find_person_in_db(contrib['speaker'], add_info=info_dict, verbosity=verbosity)
         else:
             print("! Warning: No speaker given, not saving the following contribution: {}".format(contrib))
@@ -552,15 +539,8 @@ def parse_transcript(file, verbosity=1):
                         interjection.parties.add(party)
                 if ij.speakers:
                     for person in ij.speakers:
-                        info_dict = {'wp': wp, 'session': session, 'source_type': 'PDF/POI'}
-                        #try:
-                        #    speaker_party = PARTY_MEMBER_PDF.match(contrib['speaker']).group(3)
-                        #    speaker_party = normalize(speaker_party).replace(' ', '')
-                        #    info_dict['party'] = speaker_party
-                        #    speaker_ortszusatz = PARTY_MEMBER_PDF.match(contrib['speaker']).group(2)
-                        #    info_dict['ortszusatz'] = speaker_ortszusatz
-                        #except AttributeError:
-                        #    pass
+                        info_dict = {'wp': wp, 'session': session, 'speaker_party': contrib['speaker_party'],
+                                     'speaker_ortszusatz': contrib['speaker_ortszusatz'], 'source_type': 'PDF/SP'}
                         per = find_person_in_db(person, add_info=info_dict, verbosity=verbosity)
                         if per is not None:
                             interjection.persons.add(per)
