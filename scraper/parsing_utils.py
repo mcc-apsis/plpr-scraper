@@ -247,6 +247,7 @@ class POI(object):
                 self.parties = search_party_names(speaker[0].strip())
             self.poitext = sinfo[1].strip()
             self.type = pm.Interjection.SPEECH
+
         elif "Beifall" in text:
             self.parties = search_party_names(text)
             self.type = pm.Interjection.APPLAUSE

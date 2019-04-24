@@ -46,7 +46,7 @@ import parliament.models as pm
 from parliament.tasks import do_search
 import cities.models as cmodels
 
-from parsing_utils import dehyphenate, POI, clean_text, correct_pdf_parsing_errors, search_party_names
+from parsing_utils import dehyphenate, POI, clean_text, correct_pdf_parsing_errors, search_party_names, search_person_party
 from find_person_in_db_pdf import find_person_in_db
 from regular_expressions_global import *
 
@@ -141,7 +141,7 @@ class SpeechParser(object):
         data = {
             'speaker': self.speaker,
             'speaker_party': self.speaker_party,
-            'ortszusatz': self.speaker_ortszusatz,
+            'speaker_ortszusatz': self.speaker_ortszusatz,
             'type': 'chair' if self.chair else 'speech',
             'pars': self.pars
         }
@@ -614,7 +614,7 @@ if __name__ == '__main__':
     # settings for parsing
     delete_additional_persons = False
     delete_all = False
-    verbosity = 0
+    verbosity = 1
 
     if delete_all:
         print("Deleting all documents, utterances, paragraphs and interjections.")

@@ -151,7 +151,7 @@ def find_person_in_db(name, add_info=dict(), create=True,
         print("first name: {}, surname: {}".format(firstname, surname))
         print("title: {}, party: {}, position: {}, ortszusatz: {}".format(title, party, position, ortszusatz))
         print("Query: {}".format(query))
-        print("Clean names: {}".format([pers.clean_name for pers in query]))
+        #print("Clean names: {}".format([pers.clean_name for pers in query]))
 
         if first_entry_for_unresolved_ambiguity:
             print('Taking first entry of ambiguous results')
