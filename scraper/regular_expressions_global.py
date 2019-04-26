@@ -83,7 +83,7 @@ ANY_PARTY = re.compile('({})'.format('|'.join([x.pattern.strip() for x in PARTIE
 
 # speaker type matches
 # longest mdb name has 44 chars
-PARTY_MEMBER_PDF = re.compile('([^\(\)]{2,50}?)([\[\(][^\(\)]*[\]\)])?\s?([\[\(][^\(\)]*[\]\)])\s?:')
+PARTY_MEMBER_PDF = re.compile('([^\(\)]{2,50}?)\s([\[\(][^\(\)]*[\]\)])?\s?([\[\(][^\(\)]*[\]\)])\s?:?')
 PARTY_MEMBER = re.compile('\s*(.{2,50}?\(([^\(\)]*)\)):\s*')
 PRESIDENT = re.compile('\s*(?:Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?)\s(.{3,50}?)([\[\(][^\(\)]*[\]\)])?:\s*')
 STAATSSEKR = re.compile('\s*([^\n]{3,50}?)([\[\(][^\(\)]*[\]\)])?, (Par[li]\s?\.\s)?Staatssekretär.*?:\s*', re.DOTALL)
@@ -123,3 +123,5 @@ ABG = 'Abg\.\s*(.{4,50}?)(\[[\wäöüßÄÖÜ /]*\])'
 INHYPHEN = re.compile(r'([a-zäöüß])-\s?([a-zäöüß])', re.U)
 
 FP_REMOVE = re.compile(u'(^.*Dr.?( h.? ?c.?)?| (von( der)?)| [A-Z]\. )')
+
+REMOVE_BRACKET = re.compile('[\(\[](.*)[\)\]]')

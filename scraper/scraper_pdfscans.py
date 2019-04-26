@@ -30,8 +30,8 @@ else:
     sys.path.append('/home/leey/Documents/Data/tmv/BasicBrowser/')
     data_dir = '/home/leey/Documents/Data/Plenarprotokolle'
 
-    sys.path.append('/media/Data/MCC/tmv/BasicBrowser/')
-    data_dir = '/media/Data/MCC/Parliamentary_protocols/Parliament Germany/Plenarprotokolle'
+    #sys.path.append('/media/Data/MCC/tmv/BasicBrowser/')
+    #data_dir = '/media/Data/MCC/Parliamentary_protocols/Parliament Germany/Plenarprotokolle'
 
 # imports and settings for django and database
 # --------------------------------------------
@@ -130,8 +130,8 @@ class SpeechParser(object):
             poi_obj = POI(poi_raw)
             par['pois'].append(poi_obj)
             if self.verbosity > 0:
-                print("interjection: speakers: {}, party: {}, type: {},"
-                      "\ninterjection text: {}".format(poi_obj.speakers, poi_obj.parties, poi_obj.type, poi_obj.poitext))
+                print("interjection: speakers: {}, party: {}, speaker_party: {}, speaker_ortszusatz: {}, type: {},"
+                      "\ninterjection text: {}".format(poi_obj.speakers, poi_obj.parties, poi_obj.speaker_party, poi_obj.speaker_ortszusatz, poi_obj.type, poi_obj.poitext))
 
         self.pars.append(par)
         self.text = []
@@ -286,7 +286,13 @@ class SpeechParser(object):
                 self.speaker = speaker_match.group(0).strip(' :')
                 #self.speaker_party = search_party_names(line.strip().split(':')[0])
                 self.speaker_party = search_person_party(line.strip().split(':')[0])
-                self.speaker_ortszusatz = speaker_match.group(2)
+                if speaker_match.group(2) is not None:
+                    try:
+                        self.speaker_ortszusatz = REMOVE_BRACKET.match(speaker_match.group(2)).group(1)
+                    except AttributeError:
+                        pass
+                else:
+                    self.speaker_ortszusatz = None
                 self.chair = role in CHAIRS
                 continue
 
@@ -458,8 +464,8 @@ def parse_transcript(file, verbosity=1):
         contrib.update(base_data)
 
         if contrib['speaker']:
-            info_dict = {'wp': wp, 'session': session, 'speaker_party': contrib['speaker_party'],
-                         'speaker_ortszusatz': contrib['speaker_ortszusatz'], 'source_type': 'PDF/SP'}
+            info_dict = {'wp': wp, 'session': session, 'party': contrib['speaker_party'],
+                         'ortszusatz': contrib['speaker_ortszusatz'], 'source_type': 'PDF/SP'}
             per = find_person_in_db(contrib['speaker'], add_info=info_dict, verbosity=verbosity)
         else:
             print("! Warning: No speaker given, not saving the following contribution: {}".format(contrib))
@@ -539,8 +545,8 @@ def parse_transcript(file, verbosity=1):
                         interjection.parties.add(party)
                 if ij.speakers:
                     for person in ij.speakers:
-                        info_dict = {'wp': wp, 'session': session, 'speaker_party': contrib['speaker_party'],
-                                     'speaker_ortszusatz': contrib['speaker_ortszusatz'], 'source_type': 'PDF/SP'}
+                        info_dict = {'wp': wp, 'session': session, 'party': ij.speaker_party,
+                                     'ortszusatz': ij.speaker_ortszusatz, 'source_type': 'PDF/SP'}
                         per = find_person_in_db(person, add_info=info_dict, verbosity=verbosity)
                         if per is not None:
                             interjection.persons.add(per)
@@ -614,7 +620,7 @@ if __name__ == '__main__':
     # settings for parsing
     delete_additional_persons = False
     delete_all = False
-    verbosity = 1
+    verbosity = 0
 
     if delete_all:
         print("Deleting all documents, utterances, paragraphs and interjections.")
@@ -637,7 +643,7 @@ if __name__ == '__main__':
     count_warnings_sum = 0
 
     wps = range(12, 11, -1)
-    sessions = range(10, 11)
+    sessions = range(1, 13)
 
     print("start parsing...")
     for wp in wps:

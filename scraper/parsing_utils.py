@@ -232,6 +232,8 @@ class POI(object):
     def __init__(self, text):
         self.poitext = clean_text(text)
         self.speakers = []
+        self.speaker_ortszusatz = ""
+        self.speaker_party = ""
         self.parties = ""
         self.type = None
 
@@ -240,11 +242,19 @@ class POI(object):
             text = text.replace(m[1],"")
         if ": " in text:
             sinfo = text.split(': ', 1)
-            speaker = sinfo[0].split('[')
-            if len(speaker) > 1:
-                self.speakers.append(speaker[0].strip())
-            else:
-                self.parties = search_party_names(speaker[0].strip())
+            speaker = sinfo[0].split(' ')
+            speaker_match = PARTY_MEMBER_PDF.match(sinfo[0])
+
+            if speaker_match:
+                self.speakers.append(speaker_match.group(1))
+                self.speaker_party = search_person_party(speaker_match.group(3))
+
+                if speaker_match.group(2) is not None:
+                    self.speaker_ortszusatz = REMOVE_BRACKET.match(speaker_match.group(2)).group(1)
+
+            #else:
+            #    self.parties = search_party_names(speaker[0].strip())
+
             self.poitext = sinfo[1].strip()
             self.type = pm.Interjection.SPEECH
 

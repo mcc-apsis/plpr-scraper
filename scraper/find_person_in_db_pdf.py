@@ -65,6 +65,7 @@ def find_person_in_db(name, add_info=dict(), create=True,
     if position and verbosity > 1:
         print("= position: {}".format(position.group(0)))
 
+    if position:
         position = position.group(0)
     cname = PERSON_POSITION.sub('', name).strip(' ,')
 
@@ -73,21 +74,24 @@ def find_person_in_db(name, add_info=dict(), create=True,
         title = title.group(0)
     cname = TITLE.sub('', cname).strip()
 
-    party = PERSON_PARTY.match(original_string)
-    if party:
-        party = party.group(2)
+    #party = PERSON_PARTY.match(original_string)
+    #if party:
+    #    party = party.group(2)
     if "party" in add_info.keys():
-        add_info["party"] = add_info["party"].strip()
-        if party:
-            if add_info["party"] != party:
-                print("! Warning: Parties not matching ({}, {})".format(party, add_info["party"]))
+        #add_info["party"] = add_info["party"].strip()
+    #    if party:
+    #        if add_info["party"] != party:
+    #            print("! Warning: Parties not matching ({}, {})".format(party, add_info["party"]))
         party = add_info["party"]
     cname = PERSON_PARTY.sub(r'\1', cname)
 
-    ortszusatz = PERSON_PARTY.match(cname)
-    if ortszusatz:
-        ortszusatz = ortszusatz.group(2)
-    cname = PERSON_PARTY.sub(r'\1', cname)
+    #ortszusatz = PERSON_PARTY.match(cname)
+    #if ortszusatz:
+    #    ortszusatz = ortszusatz.group(2)
+    #cname = PERSON_PARTY.sub(r'\1', cname)
+
+    if "ortszusatz" in add_info.keys():
+        ortszusatz = add_info["ortszusatz"]
 
     cname = correct_name_parsing_errors(cname)
 
@@ -134,6 +138,13 @@ def find_person_in_db(name, add_info=dict(), create=True,
 
         if ortszusatz:
             rquery = query.filter(ortszusatz=ortszusatz)
+            if len(rquery) == 1:
+                return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
+            elif len(rquery) > 1:
+                query = rquery
+
+        if position:
+            rquery = query.filter(positions__contains=[position])
             if len(rquery) == 1:
                 return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
             elif len(rquery) > 1:
