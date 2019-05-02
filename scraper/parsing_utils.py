@@ -22,7 +22,15 @@ def search_party_names(text):
     parties = ':'.join(sorted(parties))
     return parties
 
+
 def dehyphenate(text, nl=False):
+    """
+    Removes hyphens from hyphenated words
+
+    :param text: input text
+    :param nl: boolean whether to return the text with newlines
+    :return: dehyphenated text
+    """
     DEHYPHENATE = re.compile('(?<=[A-Za-zäöüß])(-\s*)\n(?!\s*[A-ZÄÖÜ][a-zäöüß])', re.M)
 
     if isinstance(text, (list, tuple)):
@@ -33,7 +41,15 @@ def dehyphenate(text, nl=False):
     else:
         return text.replace('\n', ' ')
 
+
 def dehyphenate_with_space(text):
+    """
+    Joins hyphenated words that stem from joining lines ending with a hyphenation with a space (so far only used in TEI parser)
+
+    :param text: input text
+    :return: dehyphenated text
+    """
+
     DEHYPHENATE_SPACE = re.compile('(?<=[A-Za-zäöüÄÖÜß])(-\s)(?![A-ZÄÖÜ][a-zäöüß])', re.M)
 
     if isinstance(text, (list, tuple)):
