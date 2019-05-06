@@ -259,7 +259,7 @@ class POI(object):
         if ": " in text:
             sinfo = text.split(': ', 1)
             speaker = sinfo[0].split(' ')
-            speaker_match = PARTY_MEMBER_PDF.match(sinfo[0])
+            speaker_match = PARTY_MEMBER_PDF_POI.match(sinfo[0])
 
             if speaker_match:
                 self.speakers.append(speaker_match.group(1))

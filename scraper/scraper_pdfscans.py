@@ -284,7 +284,6 @@ class SpeechParser(object):
 
                 role = line.strip().split(' ')[0]
                 self.speaker = speaker_match.group(0).strip(' :')
-                #self.speaker_party = search_party_names(line.strip().split(':')[0])
                 self.speaker_party = search_person_party(line.strip().split(':')[0])
                 if speaker_match.group(2) is not None:
                     try:
@@ -620,7 +619,7 @@ if __name__ == '__main__':
     # settings for parsing
     delete_additional_persons = False
     delete_all = False
-    verbosity = 0
+    verbosity = 1
 
     if delete_all:
         print("Deleting all documents, utterances, paragraphs and interjections.")
@@ -642,8 +641,8 @@ if __name__ == '__main__':
     count_warnings_docs = 0
     count_warnings_sum = 0
 
-    wps = range(12, 11, -1)
-    sessions = range(1, 13)
+    wps = range(11, 10, -1)
+    sessions = range(2, 3)
 
     print("start parsing...")
     for wp in wps:
