@@ -25,13 +25,14 @@ import zipfile
 if platform.node() == "srv-mcc-apsis":
     sys.path.append('/home/muef/tmv/BasicBrowser/')
     data_dir = '/home/muef/plpr-scraper/plenarprotokolle'
+elif platform.node() == 'finn-ThinkPadMCC':
+    # local paths
+    sys.path.append('/media/Data/MCC/tmv/BasicBrowser/')
+    data_dir = '/media/Data/MCC/Parliamentary_protocols/Parliament Germany/Plenarprotokolle'
 else:
     # local paths
     sys.path.append('/home/leey/Documents/Data/tmv/BasicBrowser/')
     data_dir = '/home/leey/Documents/Data/Plenarprotokolle'
-
-    #sys.path.append('/media/Data/MCC/tmv/BasicBrowser/')
-    #data_dir = '/media/Data/MCC/Parliamentary_protocols/Parliament Germany/Plenarprotokolle'
 
 # imports and settings for django and database
 # --------------------------------------------
@@ -158,6 +159,7 @@ class SpeechParser(object):
         self.line_number = -1
 
         while self.line_number + 1 < no_lines:
+
             self.line_number += 1
             line = self.lines[self.line_number].strip()
             if verbosity > 1:
@@ -178,21 +180,6 @@ class SpeechParser(object):
 
             if DISRUPTION_MARK.match(line):
                 continue
-
-            for k in range(1,3):
-                lines = "\n".join(self.lines[self.line_number:self.line_number+k])
-                lines = dehyphenate(lines)
-                if END_MARK.search(lines):
-                    print("= matched end mark at line {}: {}".format(self.line_number, lines))
-                    self.text.append(lines)
-                    par = {
-                        'text': dehyphenate(self.text),
-                        # default for strip: removing leading and ending white space
-                        'pois': []
-                    }
-                    self.pars.append(par)
-                    yield self.emit()
-                    return
 
             # empty line
             if not len(line):
@@ -240,9 +227,10 @@ class SpeechParser(object):
             for sw in SPEAKER_STOPWORDS:
                 if sw.lower() in line.lower():
                     if verbosity > 0:
-                        print("= setting stopword flag")
+                        print("= setting stopword flag in line {}: {}".format(self.line_number, sw))
                     has_stopword = True
 
+            # match speaker
             for k in range(1,4):
                 lines = "\n".join(self.lines[self.line_number:self.line_number+k])
                 lines = dehyphenate(lines, nl=True)
@@ -264,22 +252,22 @@ class SpeechParser(object):
                     self.line_number += k - 1
                     break
 
+
             if speaker_match is not None \
                     and not is_top \
                     and not has_stopword:
 
                 if self.speaker is None and self.text == [] and self.pars == []:
-                    self.text = []
+                    pass
                 else:
-                    if verbosity > 1:
-                        print("number of paragraphs in utterance: {}".format(len(self.pars)))
-                    if len(self.pars) < 1:
+                    if len(self.pars) < 1 and self.text:
                         par = {
                             'text': dehyphenate(self.text),
                             'pois': []
                         }
                         self.pars.append(par)
 
+                    # emit everything if a new speaker has been identified
                     yield self.emit()
 
                 role = line.strip().split(' ')[0]
@@ -293,8 +281,29 @@ class SpeechParser(object):
                 else:
                     self.speaker_ortszusatz = None
                 self.chair = role in CHAIRS
+
+                # if a new speaker has been identified, add the remainder of the text of that line to self.text
+                self.text = [':'.join(lines.split(':')[1:])]
+
                 continue
 
+
+            # match end mark
+            for k in range(1,3):
+                lines = "\n".join(self.lines[self.line_number:self.line_number+k])
+                lines = dehyphenate(lines)
+                if END_MARK.search(lines):
+                    print("= matched end mark at line {}: {}".format(self.line_number, lines))
+                    self.text.append(lines)
+                    par = {
+                        'text': dehyphenate(self.text),
+                        'pois': []
+                    }
+                    self.pars.append(par)
+                    yield self.emit()
+                    return
+
+            # match interjections
             poi_match = POI_MARK.match(line)
             if poi_match is not None:
                 self.poi_content = poi_match.group(1)
@@ -619,7 +628,7 @@ if __name__ == '__main__':
     # settings for parsing
     delete_additional_persons = False
     delete_all = False
-    verbosity = 1
+    verbosity = 2
 
     if delete_all:
         print("Deleting all documents, utterances, paragraphs and interjections.")
@@ -642,7 +651,7 @@ if __name__ == '__main__':
     count_warnings_sum = 0
 
     wps = range(11, 10, -1)
-    sessions = range(2, 3)
+    sessions = range(10, 11)
 
     print("start parsing...")
     for wp in wps:
