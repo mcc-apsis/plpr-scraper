@@ -50,9 +50,13 @@ def find_person_in_db(name, add_info=dict(), create=True,
 
     name = clean_text(name)
     name = INHYPHEN.sub(r'\1\2', name)
-    name = name.rstrip(':') #new
+    name = name.rstrip(':') # new
     name = name.replace('\n', ' ')
     name = NAME_REMOVE.sub('', name)
+
+    name_match = re.search('\(', name)
+    if name_match:
+        name = name.split('(')[1]
 
     position = PERSON_POSITION.search(name)
     if "position" in add_info.keys():
@@ -74,21 +78,9 @@ def find_person_in_db(name, add_info=dict(), create=True,
         title = title.group(0)
     cname = TITLE.sub('', cname).strip()
 
-    #party = PERSON_PARTY.match(original_string)
-    #if party:
-    #    party = party.group(2)
     if "party" in add_info.keys():
-        #add_info["party"] = add_info["party"].strip()
-    #    if party:
-    #        if add_info["party"] != party:
-    #            print("! Warning: Parties not matching ({}, {})".format(party, add_info["party"]))
         party = add_info["party"]
     cname = PERSON_PARTY.sub(r'\1', cname)
-
-    #ortszusatz = PERSON_PARTY.match(cname)
-    #if ortszusatz:
-    #    ortszusatz = ortszusatz.group(2)
-    #cname = PERSON_PARTY.sub(r'\1', cname)
 
     if "ortszusatz" in add_info.keys():
         ortszusatz = add_info["ortszusatz"]

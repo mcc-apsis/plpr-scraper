@@ -246,15 +246,25 @@ class SpeechParser(object):
                                  BERICHTERSTATTER.match(lines))
 
                 if speaker_match is not None:
-                    if verbosity > 0:
-                        print("= matched speaker at line {}: {}".format(self.line_number, speaker_match))
-                    self.in_poi = False
-                    self.line_number += k - 1
-                    break
+                    # skip if matching interjection speakers instead of speech speakers
+                    ij_match = POI_SPEAKER.search(speaker_match.string)
+                    if ij_match:
+                        is_ij_speaker = True
+                        speaker_match = None
+                        pass
+
+                    else:
+                        is_ij_speaker = False
+                        if verbosity > 0:
+                            print("= matched speaker at line {}: {}".format(self.line_number, speaker_match))
+                        self.in_poi = False
+                        self.line_number += k - 1
+                        break
 
 
             if speaker_match is not None \
                     and not is_top \
+                    and not is_ij_speaker \
                     and not has_stopword:
 
                 if self.speaker is None and self.text == [] and self.pars == []:
@@ -651,7 +661,7 @@ if __name__ == '__main__':
     count_warnings_sum = 0
 
     wps = range(11, 10, -1)
-    sessions = range(10, 11)
+    sessions = range(2, 3)
 
     print("start parsing...")
     for wp in wps:

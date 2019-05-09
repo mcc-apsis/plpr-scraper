@@ -84,12 +84,12 @@ ANY_PARTY = re.compile('({})'.format('|'.join([x.pattern.strip() for x in PARTIE
 # speaker type matches
 # longest mdb name has 44 chars
 PARTY_MEMBER_PDF = re.compile('([^\(\)]{2,50}?)\s([\[\(][^\(\)]*[\]\)])?\s?([\[\(][^\(\)]*[\]\)])\s?:')
-PARTY_MEMBER_PDF_POI = re.compile('([^\(\)]{2,50}?)\s([\[\(][^\(\)]*[\]\)])?\s?([\[\(][^\(\)]*[\]\)])\s?:')
+PARTY_MEMBER_PDF_POI = re.compile('[\(\)]?\s?([^\(\)]{2,50}?)\s([\[\(][^\(\)]*[\]\)])?\s?([\[\(][^\(\)]*[\]\)])\s?')
 PARTY_MEMBER = re.compile('\s*(.{2,50}?\(([^\(\)]*)\)):\s*')
 PRESIDENT = re.compile('\s*(?:Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?)\s(.{3,50}?)([\[\(][^\(\)]*[\]\)])?:\s*')
-STAATSSEKR = re.compile('\s*([^\n]{3,50}?)([\[\(][^\(\)]*[\]\)])?, (Par[li]\s?\.\s)?Staatssekretär.*?:\s*', re.DOTALL)
-STAATSMINISTER = re.compile('\s*([^\n]{3,50}?)([\[\(][^\(\)]*[\]\)])?, Staatsminister.*?:\s*', re.DOTALL)
-MINISTER = re.compile('\s*([^\n]{3,50}?)([\[\(][^\(\)]*[\]\)])?, Bundesminister.*?:\s*', re.DOTALL)
+STAATSSEKR = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, (Par[li]\s?\.\s)?Staatssekretär.*?:\s*', re.DOTALL)
+STAATSMINISTER = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, Staatsminister.*?:\s*', re.DOTALL)
+MINISTER = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, Bundesminister.*?:\s*', re.DOTALL)
 WEHRBEAUFTRAGTER = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Wehrbeauftragter.*?:\s*')
 BUNDESKANZLER = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Bundeskanzler(in)?.*?:\s*')
 BEAUFTRAGT = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Beauftragter? der Bundes.*:\s*')
@@ -126,3 +126,4 @@ INHYPHEN = re.compile(r'([a-zäöüß])-\s?([a-zäöüß])', re.U)
 FP_REMOVE = re.compile(u'(^.*Dr.?( h.? ?c.?)?| (von( der)?)| [A-Z]\. )')
 
 REMOVE_BRACKET = re.compile('[\(\[](.*)[\)\]]')
+POI_SPEAKER = re.compile('[\(—]', re.DOTALL)
