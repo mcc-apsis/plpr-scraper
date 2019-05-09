@@ -273,6 +273,7 @@ class SpeechParser(object):
                 else:
                     if verbosity > 1:
                         print("number of paragraphs in utterance: {}".format(len(self.pars)))
+                    self.text.append(lines)
                     if len(self.pars) < 1:
                         par = {
                             'text': dehyphenate(self.text),
@@ -619,7 +620,7 @@ if __name__ == '__main__':
     # settings for parsing
     delete_additional_persons = False
     delete_all = False
-    verbosity = 1
+    verbosity = 0
 
     if delete_all:
         print("Deleting all documents, utterances, paragraphs and interjections.")
