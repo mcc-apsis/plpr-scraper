@@ -78,6 +78,11 @@ def find_person_in_db(name, add_info=dict(), create=True,
         title = title.group(0)
     cname = TITLE.sub('', cname).strip()
 
+    frau = FRAU.match(cname)
+    if frau:
+        frau = frau.group(0)
+    cname = FRAU.sub('', cname).strip()
+
     if "party" in add_info.keys():
         party = add_info["party"]
     cname = PERSON_PARTY.sub(r'\1', cname)

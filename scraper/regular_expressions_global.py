@@ -111,6 +111,7 @@ NAME_REMOVE = re.compile(u'(%s)' % '|'.join(NAME_REMOVE), re.U)
 
 PERSON_PARTY = re.compile('\s*(.{4,140})\s[\[\(](.*)[\]\)]$')
 TITLE = re.compile('[A-Z]?\.?\s*Dr\s?\.(\sh\.\s?c\.)?|Prof\.(\sDr\.)?(\sDr\.)?(h\.\s?c\.)?')
+FRAU = re.compile('Frau ?')
 
 TOP_MARK = re.compile('.*(?: rufe.*der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt)(.*)')
 POI_MARK = re.compile('\((.*)\)\s*$', re.M)
@@ -126,4 +127,4 @@ INHYPHEN = re.compile(r'([a-zäöüß])-\s?([a-zäöüß])', re.U)
 FP_REMOVE = re.compile(u'(^.*Dr.?( h.? ?c.?)?| (von( der)?)| [A-Z]\. )')
 
 REMOVE_BRACKET = re.compile('[\(\[](.*)[\)\]]')
-POI_SPEAKER = re.compile('[\(—]', re.DOTALL)
+POI_SPEAKER = re.compile('—[\n\s]|\(', re.DOTALL)
