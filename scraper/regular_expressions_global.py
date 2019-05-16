@@ -115,7 +115,7 @@ FRAU = re.compile('Frau ?')
 
 TOP_MARK = re.compile('.*(?: rufe.*der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt)(.*)')
 POI_MARK = re.compile('\((.*)\)\s*$', re.M)
-POI_BEGIN = re.compile('\(\s*[A-Z][^)]+$')
+POI_BEGIN = re.compile('\(\s*[\w][^)]+$')
 POI_END = re.compile('^[^(]+\)')
 
 WRITING_BEGIN = re.compile('.*werden die Reden zu Protokoll genommen.*')

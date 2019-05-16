@@ -231,71 +231,61 @@ class SpeechParser(object):
                     has_stopword = True
 
             # match speaker
-            for k in range(1,4):
-                lines = "\n".join(self.lines[self.line_number:self.line_number+k])
-                lines = dehyphenate(lines, nl=True)
-                # print(repr(lines)) # print with escape characters
-                speaker_match = (PRESIDENT.match(lines) or
-                                 PARTY_MEMBER_PDF.match(lines) or
-                                 STAATSSEKR.match(lines) or
-                                 STAATSMINISTER.match(lines) or
-                                 WEHRBEAUFTRAGTER.match(lines) or
-                                 BUNDESKANZLER.match(lines) or
-                                 BEAUFTRAGT.match(lines) or
-                                 MINISTER.match(lines) or
-                                 BERICHTERSTATTER.match(lines))
+            if not self.in_poi:
+                for k in range(1,4):
+                    lines = "\n".join(self.lines[self.line_number:self.line_number+k])
+                    lines = dehyphenate(lines, nl=True)
+                    # print(repr(lines)) # print with escape characters
+                    speaker_match = (PRESIDENT.match(lines) or
+                                     PARTY_MEMBER_PDF.match(lines) or
+                                     STAATSSEKR.match(lines) or
+                                     STAATSMINISTER.match(lines) or
+                                     WEHRBEAUFTRAGTER.match(lines) or
+                                     BUNDESKANZLER.match(lines) or
+                                     BEAUFTRAGT.match(lines) or
+                                     MINISTER.match(lines) or
+                                     BERICHTERSTATTER.match(lines))
 
-                if speaker_match is not None:
-                    # skip if matching interjection speakers instead of speech speakers
-                    ij_match = POI_SPEAKER.search(speaker_match.string)
-                    if ij_match:
-                        is_ij_speaker = True
-                        speaker_match = None
-                        pass
-
-                    else:
-                        is_ij_speaker = False
+                    if speaker_match is not None:
                         if verbosity > 0:
                             print("= matched speaker at line {}: {}".format(self.line_number, speaker_match))
-                        self.in_poi = False
                         self.line_number += k - 1
                         break
 
 
-            if speaker_match is not None \
-                    and not is_top \
-                    and not is_ij_speaker \
-                    and not has_stopword:
+                if speaker_match is not None \
+                        and not is_top \
+                        and not has_stopword:
 
-                if self.speaker is None and self.text == [] and self.pars == []:
-                    pass
-                else:
-                    if len(self.pars) < 1 and self.text:
-                        par = {
-                            'text': dehyphenate(self.text),
-                            'pois': []
-                        }
-                        self.pars.append(par)
-
-                    # emit everything if a new speaker has been identified
-                    yield self.emit()
-
-                role = line.strip().split(' ')[0]
-                self.speaker = speaker_match.group(0).strip(' :')
-                self.speaker_party = search_person_party(line.strip().split(':')[0])
-                if speaker_match.group(2) is not None:
-                    try:
-                        self.speaker_ortszusatz = REMOVE_BRACKET.match(speaker_match.group(2)).group(1)
-                    except AttributeError:
+                    if self.speaker is None and self.text == [] and self.pars == []:
                         pass
-                else:
-                    self.speaker_ortszusatz = None
-                self.chair = role in CHAIRS
+                    else:
+                        if len(self.pars) < 1 and self.text:
+                            par = {
+                                'text': dehyphenate(self.text),
+                                'pois': []
+                            }
+                            self.pars.append(par)
 
-                # if a new speaker has been identified, add the remainder of the text of that line to self.text
-                self.text = [':'.join(lines.split(':')[1:])]
+                        # emit everything if a new speaker has been identified
+                        yield self.emit()
 
-                continue
+                    role = line.strip().split(' ')[0]
+                    self.speaker = speaker_match.group(0).strip(' :')
+                    self.speaker_party = search_person_party(line.strip().split(':')[0])
+                    if speaker_match.group(2) is not None:
+                        try:
+                            self.speaker_ortszusatz = REMOVE_BRACKET.match(speaker_match.group(2)).group(1)
+                        except AttributeError:
+                            pass
+                    else:
+                        self.speaker_ortszusatz = None
+                    self.chair = role in CHAIRS
+
+                    # if a new speaker has been identified, add the remainder of the text of that line to self.text
+                    self.text = [':'.join(lines.split(':')[1:])]
+
+                    continue
 
 
             # match end mark
@@ -642,9 +632,6 @@ if __name__ == '__main__':
 
     if delete_all:
         print("Deleting all documents, utterances, paragraphs and interjections.")
-        # pmodels.Person.objects.all().delete()
-        # pmodels.Parl.objects.all().delete()
-        # pmodels.ParlPeriod.objects.all().delete()
         pm.Interjection.objects.all().delete()
         pm.Paragraph.objects.all().delete()
         pm.Utterance.objects.all().delete()
@@ -661,7 +648,7 @@ if __name__ == '__main__':
     count_warnings_sum = 0
 
     wps = range(11, 10, -1)
-    sessions = range(2, 3)
+    sessions = range(1, 11)
 
     print("start parsing...")
     for wp in wps:
@@ -707,7 +694,3 @@ if __name__ == '__main__':
     print("Documents with errors: {}".format(count_errors))
     print("Documents with warnings: {}".format(count_warnings_docs))
     print("Sum of all warnings: {}".format(count_warnings_sum))
-
-
-    #for s in Search.objects.all():
-    #    do_search.delay(s.id)
