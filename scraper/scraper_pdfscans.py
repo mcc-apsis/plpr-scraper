@@ -24,7 +24,7 @@ import zipfile
 
 if platform.node() == "srv-mcc-apsis":
     sys.path.append('/home/muef/tmv/BasicBrowser/')
-    data_dir = '/home/muef/plpr-scraper/plenarprotokolle'
+    data_dir = '/usr/local/apsis/parliamentary_protocols/german_bundestag/plenarprotokolle_xml'
 elif platform.node() == 'finn-ThinkPadMCC':
     # local paths
     sys.path.append('/media/Data/MCC/tmv/BasicBrowser/')
