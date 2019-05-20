@@ -54,7 +54,7 @@ INCOMPLETE_BEGIN_MARK = re.compile('.*?Die Sitzung wird um \d{1,2} Uhr|Beginn?:'
 DISRUPTION_MARK = re.compile('^\s*Unterbrechung von [0-9.:]* bis [0-9.:]* Uhr|'
                              'Namensaufruf und Wahl')
 
-END_MARK = re.compile('(\(Schluss:.\d{1,2}\s?.\d{1,2}.Uhr\).*|\(*Schluss der Sitzung)|Die Sitzung ist geschlossen')
+END_MARK = re.compile('(\(Schluss:.\d{1,2}\s?.\d{1,2}.Uhr\).*|\(*Schlu[ssß] der Sitzung)|Die Sitzung ist geschlossen')
 
 HEADER_MARK = re.compile('\d{0,6}\s*Deutscher Bundestag\s*[–\-]\s*\d{1,2}\.\s*Wahlperiode\s*[–\-]\s*\d{1,4}\. Sitzung.\s*(Bonn|Berlin),'
                          '|\s*\([A-Z]\)(\s*\([A-Z]\))*\s*$|\d{1,6}\s*$|^\s*\([A-Z]\)\s\)$|^\s*\([A-Z]$|^\s*[A-Z]\)$')
@@ -83,23 +83,24 @@ ANY_PARTY = re.compile('({})'.format('|'.join([x.pattern.strip() for x in PARTIE
 
 # speaker type matches
 # longest mdb name has 44 chars
-PARTY_MEMBER_PDF = re.compile('([^\(\)]{2,50}?)\s([\[\(][^\(\)]*[\]\)])?\s?([\[\(][^\(\)]*[\]\)])\s?:')
+PARTY_MEMBER_PDF = re.compile('([^\(\)]{2,50}?)\s([\[\(][^\(\)\[\]]*[\]\)])?\s?([\[\(][^\(\)\[\]]*[\]\)])\s?:')
 PARTY_MEMBER_PDF_POI = re.compile('[\(\)]?\s?([^\(\)]{2,50}?)\s([\[\(][^\(\)]*[\]\)])?\s?([\[\(][^\(\)]*[\]\)])\s?')
 PARTY_MEMBER = re.compile('\s*(.{2,50}?\(([^\(\)]*)\)):\s*')
 PRESIDENT = re.compile('\s*(?:Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?)\s(.{3,50}?)([\[\(][^\(\)]*[\]\)])?:\s*')
-STAATSSEKR = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, (Par[li]\s?\.\s)?Staatssekretär.*?:\s*', re.DOTALL)
-STAATSMINISTER = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, Staatsminister.*?:\s*', re.DOTALL)
-MINISTER = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, Bundesminister.*?:\s*', re.DOTALL)
-WEHRBEAUFTRAGTER = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Wehrbeauftragter.*?:\s*')
-BUNDESKANZLER = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Bundeskanzler(in)?.*?:\s*')
-BEAUFTRAGT = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Beauftragter? der Bundes.*:\s*')
-BERICHTERSTATTER = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Berichterstatter(in)?.*?:\s*')
+STAATSSEKR = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, (Par[li]\s?\.\s)?Staatssekretär[^\n\(\)]*?:\s*', re.DOTALL)
+STAATSMINISTER = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, Staatsminister[^\n\(\)]*?:\s*', re.DOTALL)
+MINISTER = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, Bundesminister[^\n\(\)]*?:\s*', re.DOTALL)
+WEHRBEAUFTRAGTER = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Wehrbeauftragter[^\n\(\)]*?:\s*')
+BUNDESKANZLER = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Bundeskanzler(in)?[^\n\(\)]*?:\s*')
+BEAUFTRAGT = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Beauftragter? der Bundes[^\n\(\)]*:\s*')
+BERICHTERSTATTER = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Berichterstatter(in)?[^\n\(\)]*?:\s*')
+PRIME_MINISTER = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, Ministerpräsident[^\n\(\)]*?:\s*', re.DOTALL)
 # Note: ? after .{3,50} makes expression greedy (tries to match as little as possible)
 
 PERSON_POSITION = ['Vizepräsident(in)?', 'Präsident(in)?',
                    'Alterspräsident(in)?', 'Bundeskanzler(in)?',
                    'Staatsminister(in)?\s*(im)?.*$', '(?<=,\s)Bundesminister(in)?\s*(für)?.*$',
-                   'Parl\s?. Staatssekretär(in)?\s*(beim)?.*$', '(?<=,\s)Berichterstatter(in)?', 'Abg.',
+                   '(Par[li]\s?)?.\sStaatssekretär(in)?\s*(beim)?.*$', '(?<=,\s)Berichterstatter(in)?', 'Abg.',
                    'Minister(in)?', 'Ministerpräsident(in)?', 'Senator(in)?']
 
 PERSON_POSITION = re.compile(u'(%s)' % '|'.join(PERSON_POSITION), re.U)

@@ -216,13 +216,6 @@ class SpeechParser(object):
                 else:
                     self.in_header = False
 
-            is_top = False
-            # new point on the agenda (top - tagesordnungspunkt)
-            if TOP_MARK.match(line):
-                if verbosity > 0:
-                    print("= matched top mark: {}".format(line))
-                is_top = True
-
             has_stopword = False
             for sw in SPEAKER_STOPWORDS:
                 if sw.lower() in line.lower():
@@ -230,7 +223,7 @@ class SpeechParser(object):
                         print("= setting stopword flag in line {}: {}".format(self.line_number, sw))
                     has_stopword = True
 
-            # match speaker
+            # match speaker not in interjections
             if not self.in_poi:
                 for k in range(1,4):
                     lines = "\n".join(self.lines[self.line_number:self.line_number+k])
@@ -244,7 +237,8 @@ class SpeechParser(object):
                                      BUNDESKANZLER.match(lines) or
                                      BEAUFTRAGT.match(lines) or
                                      MINISTER.match(lines) or
-                                     BERICHTERSTATTER.match(lines))
+                                     BERICHTERSTATTER.match(lines) or
+                                     PRIME_MINISTER.match(lines))
 
                     if speaker_match is not None:
                         if verbosity > 0:
@@ -254,13 +248,12 @@ class SpeechParser(object):
 
 
                 if speaker_match is not None \
-                        and not is_top \
                         and not has_stopword:
 
                     if self.speaker is None and self.text == [] and self.pars == []:
                         pass
                     else:
-                        if len(self.pars) < 1 and self.text:
+                        if self.text:
                             par = {
                                 'text': dehyphenate(self.text),
                                 'pois': []
@@ -648,7 +641,7 @@ if __name__ == '__main__':
     count_warnings_sum = 0
 
     wps = range(11, 10, -1)
-    sessions = range(1, 11)
+    sessions = range(51, 101)
 
     print("start parsing...")
     for wp in wps:
