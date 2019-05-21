@@ -6,6 +6,7 @@ import sys
 sys.path.append('/home/leey/Documents/Data/tmv/BasicBrowser/')
 import parliament.models as pm
 import cities.models as cmodels
+from django.db.models import Q
 
 # =================================================================================================
 
@@ -99,6 +100,11 @@ def find_person_in_db(name, add_info=dict(), create=True,
         surname = cname.strip('-– ()')
         firstname = ''
 
+    # accounting for 'von' surnames
+    if firstname == 'von':
+    #    surname = firstname + ' ' + surname
+        firstname = ''
+
     # find matching entry in database
     query = pm.Person.objects.filter(alt_surnames__contains=[surname])
 
@@ -127,7 +133,7 @@ def find_person_in_db(name, add_info=dict(), create=True,
                 query = rquery
 
         if party:
-            rquery = query.filter(party__alt_names__contains=[party])
+            rquery = query.filter(Q(party__name=party) | Q(party__alt_names__contains=[party]))
             if len(rquery) == 1:
                 return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
             elif len(rquery) > 1:
