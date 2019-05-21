@@ -64,7 +64,7 @@ PARTIES_SPLIT = re.compile(r'(, (auf|an|zur|zum)( die| den )?(.* gewandt)?)')
 PARTIES_REGEX = {
     'cducsu': re.compile(' cdu ?(csu)?'),
     'spd': re.compile(' spd'),
-    'linke': re.compile(' (die|der|den) linken?| pds'),
+    'linke': re.compile(' (die|der|den)? linken?| pds'),
     'fdp': re.compile(' fdp|F.D.P.'),
     'gruene': re.compile(' bund ?nis\-?(ses)? ?90 die gru ?nen'),
     'afd': re.compile(' AfD')
@@ -73,7 +73,7 @@ PARTIES_REGEX = {
 PARTIES_REGEX_PDF = {
     'cducsu': re.compile(' ?cdu ?(csu)?'),
     'spd': re.compile(' ?spd'),
-    'linke': re.compile(' ?(die|der|den) linken?| pds'),
+    'linke': re.compile(' ?(die|der|den)? linken?| pds'),
     'fdp': re.compile(' ?fdp|F.D.P.'),
     'gruene': re.compile(' ?bund ?nis\-?(ses)? ?90 die gru ?nen'),
     'afd': re.compile(' ?AfD')
@@ -94,14 +94,14 @@ WEHRBEAUFTRAGTER = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Wehrbeauftr
 BUNDESKANZLER = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Bundeskanzler(in)?[^\n\(\)]*?:\s*')
 BEAUFTRAGT = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Beauftragter? der Bundes[^\n\(\)]*:\s*')
 BERICHTERSTATTER = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Berichterstatter(in)?[^\n\(\)]*?:\s*')
-PRIME_MINISTER = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, Ministerpräsident[^\n\(\)]*?:\s*', re.DOTALL)
+PRIME_MINISTER = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, Ministerpräsident(in)?[^\n\(\)]*?:\s*', re.DOTALL)
 # Note: ? after .{3,50} makes expression greedy (tries to match as little as possible)
 
 PERSON_POSITION = ['Vizepräsident(in)?', 'Präsident(in)?',
                    'Alterspräsident(in)?', 'Bundeskanzler(in)?',
                    'Staatsminister(in)?\s*(im)?.*$', '(?<=,\s)Bundesminister(in)?\s*(für)?.*$',
                    '(Par[li]\s?)?.\sStaatssekretär(in)?\s*(beim)?.*$', '(?<=,\s)Berichterstatter(in)?', 'Abg.',
-                   'Minister(in)?', 'Ministerpräsident(in)?', 'Senator(in)?']
+                   'Minister(in)? ', 'Ministerpräsident(in)?', 'Senator(in)?']
 
 PERSON_POSITION = re.compile(u'(%s)' % '|'.join(PERSON_POSITION), re.U)
 
