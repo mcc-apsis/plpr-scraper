@@ -82,7 +82,7 @@ def find_person_in_db(name, add_info=dict(), create=True,
     frau = FRAU.match(cname)
     if frau:
         frau = frau.group(0)
-        gender = 1
+        # gender = 1
     cname = FRAU.sub('', cname).strip()
 
     if "party" in add_info.keys():
@@ -161,12 +161,12 @@ def find_person_in_db(name, add_info=dict(), create=True,
             elif len(rquery) > 1:
                 query = rquery
 
-        if gender:
-            rquery = query.filter(gender=gender)
-            if len(rquery) == 1:
-                return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
-            elif len(rquery) > 1:
-                query = rquery
+        # if gender:
+        #    rquery = query.filter(gender=gender)
+        #    if len(rquery) == 1:
+        #        return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
+        #    elif len(rquery) > 1:
+        #        query = rquery
 
         print("! Warning: Could not distinguish between persons!")
         print("For name string: {}".format(name))
