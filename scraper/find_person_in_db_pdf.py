@@ -113,7 +113,7 @@ def find_person_in_db(name, add_info=dict(), create=True,
         return query.first()
 
     elif len(query) > 1:
-        rquery = query.filter(information_source="MDB Stammdata")
+        rquery = query.filter(Q(information_source="MDB Stammdata")|Q(information_source="Manual"))
         if len(rquery) == 1:
             return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
         elif len(rquery) > 1:

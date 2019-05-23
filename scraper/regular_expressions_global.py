@@ -94,14 +94,14 @@ WEHRBEAUFTRAGTER = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Wehrbeauftr
 BUNDESKANZLER = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Bundeskanzler(in)?[^\n\(\)]*?:\s*')
 BEAUFTRAGT = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Beauftragter? der Bundes[^\n\(\)]*:\s*')
 BERICHTERSTATTER = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?\s([\[\(][^\(\)]*[\]\)])?, Berichterstatter(in)?[^\n\(\)]*?:\s*')
-PRIME_MINISTER = re.compile('\s*(Ministerpräsident(?:in)?)\s(.{3,50}?)([\[\(][^\(\)]*[\]\)])?:\s*', re.DOTALL)
+PRIME_MINISTER = re.compile('.{3,50},\s*(Ministerpräsident(?:in)?)\s(.{3,50}?):\s*|\s*(Ministerpräsident(?:in)?)\s(.{3,50}?)([\[\(][^\(\)]*[\]\)])?:\s*', re.DOTALL)
 # Note: ? after .{3,50} makes expression greedy (tries to match as little as possible)
 
 PERSON_POSITION = ['Vizepräsident(in)?', 'Präsident(in)?',
                    'Alterspräsident(in)?', 'Bundeskanzler(in)?',
                    'Staatsminister(in)?\s*(im)?.*$', '(?<=,\s)Bundesminister(in)?\s*(für)?.*$',
                    '(Par[li]\s?\.\s?)?Staatssekretär(in)?\s*(beim)?.*$', '(?<=,\s)Berichterstatter(in)?', 'Abg.',
-                   'Minister(in)?', 'Ministerpräsident(in)?\s.*$', 'Senator(in)?']
+                   'Ministerpräsident(in)?\s.*$', 'Minister(in)?', 'Senator(in)?']
 
 PERSON_POSITION = re.compile(u'(%s)' % '|'.join(PERSON_POSITION), re.U)
 
