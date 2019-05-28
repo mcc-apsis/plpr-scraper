@@ -69,7 +69,7 @@ def emit_person(person, period=None, title="", party="", ortszusatz=""):
                 party_obj = pm.Party.objects.get(alt_names__contains=[party])
                 person.party = party_obj
             except pm.Party.DoesNotExist:
-                print("! Warning: party could not be identified: {}".format(party))
+                print("! Warning: party could not be identified in emit_person: {}".format(party))
         if ortszusatz:
             person.ortszusatz = ortszusatz
         if period:
@@ -212,7 +212,7 @@ def find_person_in_db(name, add_info=dict(), create=True,
                     party_obj = pm.Party.objects.get(alt_names__contains=[party])
                     person.party = party_obj
                 except pm.Party.DoesNotExist:
-                    print("! Warning: party could not be identified: {}".format(party))
+                    print("! Warning: party could not be identified when creating new person in find_person_in_db: {}".format(party))
             if ortszusatz:
                 person.ortszusatz = ortszusatz
 

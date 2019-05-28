@@ -95,8 +95,10 @@ def find_person_in_db(name, add_info=dict(), create=True,
     cname = correct_name_parsing_errors(cname)
 
     if len(cname.split(' ')) > 1:
-        surname = cname.split(' ')[-1].strip('-– ()') # remove beginning and tailing "-", "(", ")" and white space
-        firstname = cname.split(' ')[0].strip('-– ()­')
+        surname = cname.split(' ')[-1].strip('-– ().,') # remove beginning and tailing "-", "(", ")" and white space
+        firstname = cname.split(' ')[0].strip('-– ()­.,')
+        if firstname in ['Herr', 'Frau', 'Bitte', 'Sie', 'Das', 'Kollege']:
+            firstname = ''
     else:
         surname = cname.strip('-– ()')
         firstname = ''
@@ -113,6 +115,24 @@ def find_person_in_db(name, add_info=dict(), create=True,
         return query.first()
 
     elif len(query) > 1:
+
+        if firstname:  # empty string '' gives False
+            rquery = query.filter(alt_first_names__contains=[firstname])
+            if len(rquery) == 1:
+                return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
+            elif len(rquery) > 1:
+                query = rquery
+            elif len(rquery) < 1 and wp:
+                # only for parlperiods > 12 because first names are only given from 13 onwards
+                if wp > 12:
+                    print("! Found no person with the given firstname")
+                    if create:
+                        return create_person(surname, firstname, title=title, party=party,
+                                             ortszusatz=ortszusatz, position=position, add_info=add_info, wp=wp,
+                                             original_string=original_string)
+                    else:
+                        print("Continue to find matching person by filtering")
+
         rquery = query.filter(Q(information_source="MDB Stammdata")|Q(information_source="Manual"))
         if len(rquery) == 1:
             return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
@@ -121,13 +141,6 @@ def find_person_in_db(name, add_info=dict(), create=True,
 
         if wp:
             rquery = query.filter(in_parlperiod__contains=[wp])
-            if len(rquery) == 1:
-                return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
-            elif len(rquery) > 1:
-                query = rquery
-
-        if firstname:  # empty string '' gives False
-            rquery = query.filter(alt_first_names__contains=[firstname])
             if len(rquery) == 1:
                 return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
             elif len(rquery) > 1:
@@ -156,6 +169,12 @@ def find_person_in_db(name, add_info=dict(), create=True,
 
         if title:
             rquery = query.filter(title=title)
+            if len(rquery) == 1:
+                return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
+            elif len(rquery) > 1:
+                query = rquery
+        else:
+            rquery = query.filter(title=None)
             if len(rquery) == 1:
                 return emit_person(rquery.first(), period=wp, title=title, party=party, ortszusatz=ortszusatz)
             elif len(rquery) > 1:
@@ -190,43 +209,53 @@ def find_person_in_db(name, add_info=dict(), create=True,
             print("title: {}, party: {}, position: {}, ortszusatz: {}".format(title, party, position, ortszusatz))
 
         if create:
-            person = pm.Person(surname=surname, first_name=firstname)
-            if title:
-                person.title = title
-            if party:
-                try:
-                    party_obj = pm.Party.objects.get(alt_names__contains=[party])
-                    person.party = party_obj
-                except pm.Party.DoesNotExist:
-                    print("! Warning: party could not be identified: {}".format(party))
-            if ortszusatz:
-                person.ortszusatz = ortszusatz
-
-            if position:
-                person.positions = [position]
-                # use position with data model "Post" ?
-
-            if 'session' in add_info.keys():
-                session_str = "{sn:03d}".format(sn=add_info['session'])
-            else:
-                session_str = "???"
-
-            if 'source_type' in add_info.keys():
-                source_str = add_info['source_type']
-            else:
-                source_str = ""
-
-            person.in_parlperiod = [wp]
-            person.active_country = cmodels.Country.objects.get(name='Germany')
-            person.information_source = "from protocol scraping " \
-                                        "{wp:02d}/{sn} {type}: {name}".format(wp=wp, sn=session_str,
-                                                                              type=source_str, name=original_string)
-            person.save()
-            print("Created person: {}".format(person))
-            return person
+            return create_person(surname, firstname, title=title, party=party,
+                                 ortszusatz=ortszusatz, position=position, add_info=add_info, wp=wp,
+                                 original_string=original_string)
 
         else:
             return None
+
+
+def create_person(surname, firstname, title=None, party=None, ortszusatz=None, position=None,
+                  add_info=dict(), wp=None, original_string=None):
+
+        person = pm.Person(surname=surname, first_name=firstname)
+        if title:
+            person.title = title
+        if party:
+            try:
+                party_obj = pm.Party.objects.get(alt_names__contains=[party])
+                person.party = party_obj
+            except pm.Party.DoesNotExist:
+                print("! Warning: party could not be identified: {}".format(party))
+        if ortszusatz:
+            person.ortszusatz = ortszusatz
+
+        if position:
+            person.positions = [position]
+            # use position with data model "Post" ?
+
+        if 'session' in add_info.keys():
+            session_str = "{sn:03d}".format(sn=add_info['session'])
+        else:
+            session_str = "???"
+
+        if 'source_type' in add_info.keys():
+            source_str = add_info['source_type']
+        else:
+            source_str = ""
+
+        person.in_parlperiod = [wp]
+        person.active_country = cmodels.Country.objects.get(name='Germany')
+        person.information_source = "from protocol scraping " \
+                                    "{wp:02d}/{sn} {type}: {name}".format(wp=wp, sn=session_str,
+                                                                          type=source_str, name=original_string)
+        person.save()
+        print("Created person: {}".format(person))
+
+        return person
+
 
 # copied from normdatei.text
 def clean_text(text):

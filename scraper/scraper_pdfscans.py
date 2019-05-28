@@ -169,11 +169,13 @@ class SpeechParser(object):
             if not self.in_session and BEGIN_MARK.match(line):
                 print("= matched begin mark at line {}: {}".format(self.line_number, line))
                 self.in_session = True
+                self.begin_line = self.line_number
                 continue
             if not self.in_session and INCOMPLETE_BEGIN_MARK.match(line):
                 print("! warning at line {}: Matched only incomplete begin mark: {}".format(self.line_number, line))
                 self.warnings_counter += 1
                 self.in_session = True
+                self.begin_line = self.line_number
 
             elif not self.in_session:
                 continue
@@ -248,7 +250,7 @@ class SpeechParser(object):
 
 
                 if speaker_match is not None \
-                        and not has_stopword:
+                        and (not has_stopword or self.line_number - self.begin_line <= 1):
 
                     if self.speaker is None and self.text == [] and self.pars == []:
                         pass
@@ -265,6 +267,8 @@ class SpeechParser(object):
 
                     role = line.strip().split(' ')[0]
                     self.speaker = speaker_match.group(0).strip(' :')
+                    if self.verbosity > 0:
+                        print("set new speaker: {}".format(self.speaker))
                     self.speaker_party = search_person_party(line.strip().split(':')[0])
                     if speaker_match.group(2) is not None:
                         try:
@@ -640,8 +644,8 @@ if __name__ == '__main__':
     count_warnings_docs = 0
     count_warnings_sum = 0
 
-    wps = range(11, 10, -1)
-    sessions = range(51, 101)
+    wps = range(13, 12, -1)
+    sessions = range(0, 85)
 
     print("start parsing...")
     for wp in wps:

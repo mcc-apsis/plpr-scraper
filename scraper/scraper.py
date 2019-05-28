@@ -599,7 +599,7 @@ if __name__ == '__main__':
         {'party':'spd','colour':'#EB001F'},
         {'party':'linke','colour':'#8C3473'},
         {'party':'fdp','colour':'#FFED00'},
-        {'party':'afd','colour':'#cducsu'},
+        {'party':'afd','colour':'#0088FF'},
         {'party':'gruene','colour':'#64A12D'},
     ]
     for pc in pcolours:

@@ -83,7 +83,7 @@ ANY_PARTY = re.compile('({})'.format('|'.join([x.pattern.strip() for x in PARTIE
 
 # speaker type matches
 # longest mdb name has 44 chars
-PARTY_MEMBER_PDF = re.compile('([^\(\)]{2,50}?)\s([\[\(][^\(\)\[\]]*[\]\)])?\s?([\[\(][^\(\)\[\]]*[\]\)])\s?:')
+PARTY_MEMBER_PDF = re.compile('([^\(\)\.\,\?]{2,50}?)\s([\[\(][^\(\)\[\]]*[\]\)])?\s?([\[\(][^\(\)\[\]]*[\]\)])\s?:')
 PARTY_MEMBER_PDF_POI = re.compile('[\(\)]?\s?([^\(\)]{2,50}?)\s([\[\(][^\(\)]*[\]\)])?\s?([\[\(][^\(\)]*[\]\)])\s?')
 PARTY_MEMBER = re.compile('\s*(.{2,50}?\(([^\(\)]*)\)):\s*')
 PRESIDENT = re.compile('\s*(?:Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?)\s(.{3,50}?)([\[\(][^\(\)]*[\]\)])?:\s*')
@@ -111,7 +111,7 @@ NAME_REMOVE = [u'\\[.*\\]|\\(.*\\)', u' de[sr]', u'Gegenrufe?', 'Weiterer Zuruf'
 NAME_REMOVE = re.compile(u'(%s)' % '|'.join(NAME_REMOVE), re.U)
 
 PERSON_PARTY = re.compile('\s*(.{4,140})\s[\[\(](.*)[\]\)]$')
-TITLE = re.compile('[A-Z]?\.?\s*Dr\s?\.(\sh\.\s?c\.)?|Prof\.(\sDr\.)?(\sDr\.)?(h\.\s?c\.)?')
+TITLE = re.compile('[A-Z]?\.?\s*Dr\s?\.(\sh\.\s?c\.)?(-Ing.)?|Prof\.(\sDr\.)?(\sDr\.)?(h\.\s?c\.)?(-Ing.)?')
 FRAU = re.compile('Frau ?')
 
 TOP_MARK = re.compile('.*(?: rufe.*der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt)(.*)')
