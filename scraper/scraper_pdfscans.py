@@ -249,8 +249,7 @@ class SpeechParser(object):
                         break
 
 
-                if speaker_match is not None \
-                        and (not has_stopword or self.line_number - self.begin_line <= 1):
+                if speaker_match is not None:
 
                     if self.speaker is None and self.text == [] and self.pars == []:
                         pass
@@ -625,7 +624,7 @@ if __name__ == '__main__':
     # settings for parsing
     delete_additional_persons = False
     delete_all = False
-    verbosity = 0
+    verbosity = 2
 
     if delete_all:
         print("Deleting all documents, utterances, paragraphs and interjections.")
@@ -644,8 +643,8 @@ if __name__ == '__main__':
     count_warnings_docs = 0
     count_warnings_sum = 0
 
-    wps = range(13, 12, -1)
-    sessions = range(0, 85)
+    wps = range(3, 2, -1)
+    sessions = range(88, 89)
 
     print("start parsing...")
     for wp in wps:
