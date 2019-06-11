@@ -200,3 +200,7 @@ Dankesehr! Jetzt rede ich!
         self.assertEqual(lines[0], first)
         self.assertEqual(lines[1], second)
 
+
+if __name__ == '__main__':
+    unittest.main()
+
