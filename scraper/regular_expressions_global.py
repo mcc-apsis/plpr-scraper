@@ -87,7 +87,7 @@ PARTY_MEMBER_PDF = re.compile('([^\(\)\,\?]{2,50}?)\s([\[\(][^\(\)\[\]]*[\]\)])?
 PARTY_MEMBER_PDF_POI = re.compile('[\(\)]?\s?([^\(\)]{2,50}?)\s([\[\(][^\(\)]*[\]\)])?\s?([\[\(][^\(\)]*[\]\)])\s?')
 PARTY_MEMBER = re.compile('\s*(.{2,50}?\(([^\(\)]*)\)):\s*')
 PRESIDENT = re.compile('\s*(?:Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?)\s(.{3,50}?)([\[\(][^\(\)]*[\]\)])?:\s*')
-STAATSSEKR = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, (Par[li]\s?\.\s)?Staatssekretär[^\n\(\)]*?:\s*', re.DOTALL)
+STAATSSEKR = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, (Par[li]\s?\.?.*\s)?Staatssekretär[^\n\(\)]*?:\s*', re.DOTALL)
 STAATSMINISTER = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, Staatsminister[^\n\(\)]*?:\s*', re.DOTALL)
 MINISTER = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, Bundesminister[^\n\(\)]*?:\s*', re.DOTALL)
 WEHRBEAUFTRAGTER = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Wehrbeauftragter[^\n\(\)]*?:\s*')
@@ -100,7 +100,7 @@ PRIME_MINISTER = re.compile('.{3,50},\s*(Ministerpräsident(?:in)?)\s(.{3,50}?):
 PERSON_POSITION = ['Vizepräsident(in)?', 'Präsident(in)?',
                    'Alterspräsident(in)?', 'Bundeskanzler(in)?',
                    'Staatsminister(in)?\s*(im)?.*$', '(?<=,\s)Bundesminister(in)?\s*(für)?.*$',
-                   '(Par[li]\s?\.\s?)?Staatssekretär(in)?\s*(beim)?.*$', '(?<=,\s)Berichterstatter(in)?', 'Abg.',
+                   '(Par[li]\s?\.?.*\s?)?Staatssekretär(in)?\s*(beim)?.*$', '(?<=,\s)Berichterstatter(in)?', 'Abg.',
                    'Ministerpräsident(in)?\s.*$', 'Minister(in)?', 'Senator(in)?']
 
 PERSON_POSITION = re.compile(u'(%s)' % '|'.join(PERSON_POSITION), re.U)
