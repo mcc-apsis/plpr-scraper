@@ -47,9 +47,9 @@ import parliament.models as pm
 from parliament.tasks import do_search
 import cities.models as cmodels
 
-from parsing_utils import dehyphenate, POI, clean_text, correct_pdf_parsing_errors, search_party_names, search_person_party
-from find_person_in_db_pdf import find_person_in_db
-from regular_expressions_global import *
+from scraper.parsing_utils import dehyphenate, POI, clean_text, correct_pdf_parsing_errors, search_party_names, search_person_party
+from scraper.find_person_in_db_pdf import find_person_in_db
+from scraper.regular_expressions_global import *
 
 import pprint
 pretty_printer = pprint.PrettyPrinter(indent=4)
@@ -162,7 +162,7 @@ class SpeechParser(object):
 
             self.line_number += 1
             line = self.lines[self.line_number].strip()
-            if verbosity > 1:
+            if self.verbosity > 1:
                 print("- l{l:04d}: ".format(l=self.line_number) + line)
 
             # Check if in session, session beginning, session ending
@@ -221,7 +221,7 @@ class SpeechParser(object):
             has_stopword = False
             for sw in SPEAKER_STOPWORDS:
                 if sw.lower() in line.lower():
-                    if verbosity > 0:
+                    if self.verbosity > 0:
                         print("= setting stopword flag in line {}: {}".format(self.line_number, sw))
                     has_stopword = True
 
@@ -243,7 +243,7 @@ class SpeechParser(object):
                                      PRIME_MINISTER.match(lines))
 
                     if speaker_match is not None:
-                        if verbosity > 0:
+                        if self.verbosity > 0:
                             print("= matched speaker at line {}: {}".format(self.line_number, speaker_match))
                         self.line_number += k - 1
                         break

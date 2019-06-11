@@ -1,5 +1,5 @@
 import re
-from regular_expressions_global import *
+from scraper.regular_expressions_global import *
 from normality import normalize
 
 # import from appended path
