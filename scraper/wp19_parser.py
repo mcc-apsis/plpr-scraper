@@ -2,12 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import os
-import difflib
-import zipfile
-import lxml.etree as etree
-import random
-import re
 import sys
+import re
+import lxml.etree as etree
 import datetime as dt
 
 import django
@@ -28,10 +25,8 @@ django.setup()
 
 # import from appended path
 import parliament.models as pm
-from parliament.tasks import do_search, run_tm
 import cities.models as cmodels
 from django.contrib.auth.models import User
-import tmv_app.models as tm
 
 from parsing_utils import find_person_in_db, POI, dehyphenate_with_space, clean_text
 from regular_expressions_global import POI_MARK
