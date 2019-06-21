@@ -67,7 +67,7 @@ PARTIES_REGEX = {
     'linke': re.compile(' (die|der|den)? linken?| pds'),
     'fdp': re.compile(' fdp|F.D.P.'),
     'gruene': re.compile(' bund ?nis\-?(ses)? ?90 die gru ?nen'),
-    'afd': re.compile(' AfD')
+    'afd': re.compile('\s?afd')
 }
 
 PARTIES_REGEX_PDF = {
@@ -76,7 +76,7 @@ PARTIES_REGEX_PDF = {
     'linke': re.compile(' ?(die|der|den)? linken?| pds'),
     'fdp': re.compile(' ?fdp|F.D.P.'),
     'gruene': re.compile(' ?bund ?nis\-?(ses)? ?90 die gru ?nen'),
-    'afd': re.compile(' ?AfD')
+    'afd': re.compile(' ?afd')
 }
 
 ANY_PARTY = re.compile('({})'.format('|'.join([x.pattern.strip() for x in PARTIES_REGEX.values()])))
@@ -84,7 +84,6 @@ ANY_PARTY = re.compile('({})'.format('|'.join([x.pattern.strip() for x in PARTIE
 # speaker type matches
 # longest mdb name has 44 chars
 PARTY_MEMBER_PDF = re.compile('((?:Dr\.)?[^\(\)\.\,\?]{2,50}?)\s([\[\(][^\(\)\[\]]*[\]\)])?\s?([\[\(][^\(\)\[\]]*[\]\)])\s?:')
-PARTY_MEMBER_PDF_POI = re.compile('[\(\)]?\s?([^\(\)]{2,50}?)\s([\[\(][^\(\)]*[\]\)])?\s?([\[\(][^\(\)]*[\]\)])\s?')
 PARTY_MEMBER = re.compile('\s*(.{2,50}?\(([^\(\)]*)\)):\s*')
 PRESIDENT = re.compile('\s*(?:Alterspräsident(?:in)?|Vizepräsident(?:in)?|Präsident(?:in)?)\s(.{3,50}?)([\[\(][^\(\)]*[\]\)])?:\s*')
 STAATSSEKR = re.compile('\s*([^\n\(\)]{3,50}?)([\[\(][^\(\)]*[\]\)])?, (Par[li]\s?\.?.*\s)?Staatssekretär[^\n\(\)]*?:\s*', re.DOTALL)
@@ -96,6 +95,9 @@ BEAUFTRAGT = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?, Beauftragter? der
 BERICHTERSTATTER = re.compile('\s*(.{3,50}?)([\[\(][^\(\)]*[\]\)])?\s([\[\(][^\(\)]*[\]\)])?, Berichterstatter(in)?[^\n\(\)]*?:\s*')
 PRIME_MINISTER = re.compile('.{3,50},\s*(Ministerpräsident(?:in)?)\s(.{3,50}?):\s*|\s*(Ministerpräsident(?:in)?)\s(.{3,50}?)([\[\(][^\(\)]*[\]\)])?:\s*', re.DOTALL)
 # Note: ? after .{3,50} makes expression greedy (tries to match as little as possible)
+
+PARTY_MEMBER_PDF_POI = re.compile('[\(\)]?\s?([^\(\)]{2,50}?)\s([\[\(][^\(\)]*[\]\)])?\s?([\[\(][^\(\)]*[\]\)])\s?')
+ABG_POI = re.compile('Abg\.\s*(.{4,50}?)(\[[\wäöüßÄÖÜ /]*\])?():')
 
 PERSON_POSITION = ['Vizepräsident(in)?', 'Präsident(in)?',
                    'Alterspräsident(in)?', 'Bundeskanzler(in)?',
@@ -115,6 +117,7 @@ TITLE = re.compile('[A-Z]?\.?\s*Dr\s?\.(\sh\.\s?c\.)?(-Ing.)?|Prof\.(\sDr\.)?(\s
 FRAU = re.compile('Frau ?')
 
 TOP_MARK = re.compile('.*(?: rufe.*der Tagesordnung|Tagesordnungspunkt|Zusatzpunkt)(.*)')
+TOPS = re.compile('.*(?:rufe|komme|Punkt)(?:.*?der.*?Tagesordnung|Tagesordnungspunkt|Zusatzpunkt).*(?:\.|:)\s?(.*)')
 POI_MARK = re.compile('\((.*)\)\s*$', re.M)
 POI_BEGIN = re.compile('\(\s*[\w][^)]+$')
 POI_END = re.compile('^[^(]+\)')
