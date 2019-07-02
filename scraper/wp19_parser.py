@@ -12,7 +12,7 @@ import platform
 
 if platform.node() == "srv-mcc-apsis":
     sys.path.append('/home/leey/tmv/BasicBrowser/')
-    xml_path = "/home/leey/plpr-scraper/data/19wahlperiode"
+    xml_path = "/home/leey/plpr-scraper/data/19wahlperiode/"
 
 else:
     # local paths
@@ -26,7 +26,6 @@ django.setup()
 # import from appended path
 import parliament.models as pm
 import cities.models as cmodels
-from django.contrib.auth.models import User
 
 from parsing_utils import find_person_in_db, POI, dehyphenate_with_space, clean_text
 from regular_expressions_global import POI_MARK
@@ -57,7 +56,7 @@ class Logger(object):
         pass
 
 
-class parse_tei_items(object):
+class parse_xml_items(object):
 
     def __init__(self, xtree, v=1, period=None, session=None):
         self.v = v
@@ -160,12 +159,12 @@ class parse_tei_items(object):
                     party, created = pm.Party.objects.get_or_create(
                         name=party_name
                     )
-
                     interjection.parties.add(party)
+
             if poi_obj.speakers:
                 for person in poi_obj.speakers:
                     per = find_person_in_db(person, add_info={'wp': self.wp, 'session': self.session,
-                                                              'source_type': 'TEI/POI'}, verbosity=self.v)
+                                                              'source_type': 'Bundestag XML'}, verbosity=self.v)
                     if per is not None:
                         interjection.persons.add(per)
                     else:
@@ -195,7 +194,7 @@ class parse_tei_items(object):
                     for rolexp in redner.xpath('name/rolle_lang/text()'): info_dict['role'] = rolexp
                     info_dict['wp'] = self.wp
                     info_dict['session'] = self.session
-                    info_dict['source_type'] = 'Bundestag'
+                    info_dict['source_type'] = 'Bundestag XML'
 
                     if fullname != []:
                         speaker = find_person_in_db(fullname, add_info=info_dict, verbosity=self.v)
@@ -228,10 +227,12 @@ class parse_tei_items(object):
                         if c.tag == "p" and c.get("klasse") in speech_list:
                             if c.text:
                                 text.append(c.text)
-                        elif c.tag == "name":
-                            if text:
-                                para = self.create_paragraph(text, ut)
-                                text = []
+                        # to add other speakers that are not the main speaker e.g. President
+                        # not working properly
+                        #elif c.tag == "name":
+                        #    if text:
+                        #        para = self.create_paragraph(text, ut)
+                        #        text = []
                         elif c.tag == "kommentar":
                             if text:
                                 para = self.create_paragraph(text, ut)
@@ -250,7 +251,7 @@ if __name__ == '__main__':
 
     sys.stdout = Logger()
 
-    single_doc = False
+    single_doc = True
     replace_docs = False
 
     delete_all = False
@@ -270,7 +271,7 @@ if __name__ == '__main__':
     if single_doc:
         # single file
         wp = 19
-        session = 1
+        session = 64
         #{wp:02d}/
         xml_file = os.path.join(xml_path, "{wp:02d}{sn:03d}-data.xml".format(wp=wp, sn=session))
         namespaces = {'tei': 'http://www.tei-c.org/ns/1.0'}
@@ -278,9 +279,9 @@ if __name__ == '__main__':
         print("reading from {}".format(xml_file))
 
         xtree = etree.parse(xml_file)
-        parser = parse_tei_items(xtree)
+        parser = parse_xml_items(xtree)
 
-        # pm.Document.objects.filter(parlperiod__n=parser.wp, sitting=parser.session).delete()
+        pm.Document.objects.filter(parlperiod__n=parser.wp, sitting=parser.session).delete()
         parser.run()
         print("Done.")
 
@@ -301,5 +302,5 @@ if __name__ == '__main__':
             pm.Document.objects.filter(parlperiod__n=pperiod, sitting=session,
                                        text_source__startswith="from protocol scraping").delete()
 
-            parser = parse_tei_items(xtree, period=pperiod, session=session)
+            parser = parse_xml_items(xtree, period=pperiod, session=session)
             parser.run()
