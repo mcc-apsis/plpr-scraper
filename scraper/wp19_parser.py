@@ -60,7 +60,7 @@ class parse_xml_items(object):
 
     def __init__(self, xtree, v=1, period=None, session=None):
         self.v = v
-        self.divs = xtree.findall("//rede")
+        self.divs = xtree.findall("//tagesordnungspunkt")
 
         self.wp = int(xtree.xpath('vorspann/kopfdaten/plenarprotokoll-nummer/wahlperiode/text()')[0])
         self.session = int(xtree.xpath('vorspann/kopfdaten/plenarprotokoll-nummer/sitzungsnr/text()')[0])
@@ -175,32 +175,77 @@ class parse_xml_items(object):
         self.get_or_create_objects()
 
         ### start parsing of speeches
+        speech_list = ['J','O','J_1']
         for div in self.divs: # speech in list of <rede>
             if self.v > 1:
                 print("speech id: {}".format(div.get("top-id")))
 
-            for uts in div.iter(): # <p> in <rede>
-                for redner in uts.xpath("p[@klasse='redner']/redner"):
-                    vorname = redner.xpath('name/vorname/text()')
-                    nachname = redner.xpath('name/nachname/text()')
-                    fullname = vorname + nachname
-                    if len(fullname) > 1:
-                        fullname = fullname[0] + ' ' + fullname[1]
+            # finding agenda item
+            for top in div.xpath('child::p'):
+                if top.get('klasse') == "T_NaS":
+                    agenda_item, created = pm.AgendaItem.objects.get_or_create(
+                    title = top.text,
+                    document = self.doc
+                    )
 
-                    # match speaker to database:
-                    info_dict = {}
-                    # for nameidxp in uts.xpath('talker/name.id/text()'): info_dict['nameid'] = nameidxp
-                    for partyxp in redner.xpath('name/fraktion/text()'): info_dict['party'] = partyxp
-                    for rolexp in redner.xpath('name/rolle_lang/text()'): info_dict['role'] = rolexp
-                    info_dict['wp'] = self.wp
-                    info_dict['session'] = self.session
-                    info_dict['source_type'] = 'Bundestag XML'
+            for sp in div:
+                if sp.tag == "rede": # finding <rede> in <tagesordnungspunkt>
+                    for uts in sp: # child elements of <rede>
+                        if uts.tag == "p" and uts.get("klasse") == "redner" or uts.tag =="name":
+                            if uts.tag == "p": # finding name in <redner>
+                                for redner in uts:
+                                    vorname = redner.xpath('name/vorname/text()')
+                                    nachname = redner.xpath('name/nachname/text()')
+                                    fullname = vorname + nachname
+                                    if len(fullname) > 1:
+                                        fullname = fullname[0] + ' ' + fullname[1]
 
-                    if fullname != []:
-                        speaker = find_person_in_db(fullname, add_info=info_dict, verbosity=self.v)
+                                    # match speaker to database:
+                                    info_dict = {}
+                                    # for nameidxp in uts.xpath('talker/name.id/text()'): info_dict['nameid'] = nameidxp
+                                    for partyxp in redner.xpath('name/fraktion/text()'): info_dict['party'] = partyxp
+                                    for rolexp in redner.xpath('name/rolle_lang/text()'): info_dict['role'] = rolexp
+                                    info_dict['wp'] = self.wp
+                                    info_dict['session'] = self.session
+                                    info_dict['source_type'] = 'Bundestag XML'
 
-                        if speaker is None:
-                            print(fullname)
+                                    if fullname != []:
+                                        speaker = find_person_in_db(fullname, add_info=info_dict, verbosity=self.v)
+
+                                        if speaker is None:
+                                            print(fullname)
+
+                                    text = []
+
+                                    ut = pm.Utterance(
+                                        document=self.doc,
+                                        speaker=speaker,
+                                        agenda_item = agenda_item
+                                        #speaker_role=speaker_role
+                                    )
+                                    ut.save()
+
+
+                                    if self.v > 1:
+                                        print("{}: {}".format(c.tag, c.text))
+
+                                    if uts.tag == "p" and uts.get("klasse") in speech_list:
+                                        if uts.text:
+                                            text.append(uts.text)
+
+                                    elif uts.tag == "kommentar":
+                                        if text:
+                                            para = self.create_paragraph(text, ut)
+                                            text = []
+                                        self.add_interjections(uts.text, para)
+                                    #else:
+                                    #    print("unknown tag")
+                                    if text:
+                                        para = self.create_paragraph(text, ut)
+
+                            elif uts.tag == "name":
+                                fullname = uts.text.strip(':')
+                                speaker = find_person_in_db(fullname, verbosity=self.v)
 
                 #speaker_role_set = pm.SpeakerRole.objects.filter(alt_names__contains=[rolexp])
                 #if len(speaker_role_set) < 1:
@@ -211,37 +256,33 @@ class parse_xml_items(object):
                 #    if len(speaker_role_set) > 1:
                 #       print("Warning: several speaker roles matching")
 
-                    text = []
-
-                    ut = pm.Utterance(
-                        document=self.doc,
-                        speaker=speaker,
-                        #speaker_role=speaker_role
-                    )
-                    ut.save()
-
-                    speech_list = ['J','O','J_1']
-                    for c in uts.iter():
-                        if self.v > 1:
-                            print("{}: {}".format(c.tag, c.text))
-                        if c.tag == "p" and c.get("klasse") in speech_list:
-                            if c.text:
-                                text.append(c.text)
-                        # to add other speakers that are not the main speaker e.g. President
-                        # not working properly
-                        #elif c.tag == "name":
-                        #    if text:
-                        #        para = self.create_paragraph(text, ut)
-                        #        text = []
-                        elif c.tag == "kommentar":
-                            if text:
-                                para = self.create_paragraph(text, ut)
                                 text = []
-                            self.add_interjections(c.text, para)
-                        #else:
-                        #    print("unknown tag")
-                    if text:
-                        para = self.create_paragraph(text, ut)
+
+                                ut = pm.Utterance(
+                                    document=self.doc,
+                                    speaker=speaker,
+                                    agenda_item = agenda_item
+                                    #speaker_role=speaker_role
+                                )
+                                ut.save()
+
+                                if self.v > 1:
+                                    print("{}: {}".format(c.tag, c.text))
+
+                                if uts.tag == "p" and uts.get("klasse") in speech_list:
+                                    if uts.text:
+                                        text.append(uts.text)
+
+                                elif uts.tag == "kommentar":
+                                    if text:
+                                        para = self.create_paragraph(text, ut)
+                                        text = []
+                                    self.add_interjections(uts.text, para)
+                                #else:
+                                #    print("unknown tag")
+
+                                if text:
+                                    para = self.create_paragraph(text, ut)
 
 
 # =================================================================================================================
