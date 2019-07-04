@@ -98,6 +98,7 @@ class SpeechParser(object):
         self.speaker_party = None
         self.speaker_ortszusatz = None
         self.warnings_counter = 0
+        self.tops = ""
 
     def get_date(self):
         for line in self.lines:
@@ -144,7 +145,8 @@ class SpeechParser(object):
             'speaker_party': self.speaker_party,
             'speaker_ortszusatz': self.speaker_ortszusatz,
             'type': 'chair' if self.chair else 'speech',
-            'pars': self.pars
+            'pars': self.pars,
+            'agenda': self.tops
         }
         self.was_chair = self.chair
         self.text = []
@@ -218,12 +220,29 @@ class SpeechParser(object):
                 else:
                     self.in_header = False
 
+            #==== still need this? ====#
             has_stopword = False
             for sw in SPEAKER_STOPWORDS:
                 if sw.lower() in line.lower():
                     if self.verbosity > 0:
                         print("= setting stopword flag in line {}: {}".format(self.line_number, sw))
                     has_stopword = True
+            #==== still need this? ====#    
+
+            #===== testing agendas =====#
+            is_top = False
+            # new point on the agenda (top - tagesordnungspunkt)
+            if TOP_MARK.match(line):
+                if verbosity > 0:
+                    print("= matched top mark: {}".format(line))
+                # add one line after for tops as well
+                for k in range(1,3):
+                    lines = "\n".join(self.lines[self.line_number:self.line_number+k])
+                    lines = dehyphenate(lines, nl=True)
+                    self.tops = lines
+                is_top = True
+
+            #===== testing agendas =====#
 
             # match speaker not in interjections
             if not self.in_poi:
@@ -481,6 +500,15 @@ def parse_transcript(file, verbosity=1):
             warnings_counter2 += 1
             continue
 
+        #===== testing agendas =====#
+        if contrib['agenda']:
+            tops, created = pm.AgendaItem.objects.get_or_create(
+            title = contrib['agenda'],
+            document = doc
+            )
+            tops.save()
+        #===== testing agendas =====#
+
         position = PERSON_POSITION.search(contrib['speaker'])
 
         if position:
@@ -498,7 +526,8 @@ def parse_transcript(file, verbosity=1):
             ut = pm.Utterance(
                 document=doc,
                 speaker=per,
-                speaker_role=speaker_role
+                speaker_role=speaker_role,
+
             )
         else:
             ut = pm.Utterance(
@@ -576,14 +605,6 @@ def parse_transcript(file, verbosity=1):
     else:
         return (0, parser.warnings_counter + warnings_counter2)
 
-# ==========================================================================================================
-# ==========================================================================================================
-# what is this for?
-#def clear_db():
-#    database = dataset.connect(db)
-#    table = database['plpr']
-#    table.delete()
-
 # =================================================================================================================
 # =================================================================================================================
 
@@ -643,8 +664,8 @@ if __name__ == '__main__':
     count_warnings_docs = 0
     count_warnings_sum = 0
 
-    wps = range(3, 2, -1)
-    sessions = range(88, 89)
+    wps = range(1, 0, -1)
+    sessions = range(183, 184)
 
     print("start parsing...")
     for wp in wps:
