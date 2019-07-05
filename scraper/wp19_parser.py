@@ -13,7 +13,10 @@ import platform
 if platform.node() == "srv-mcc-apsis":
     sys.path.append('/home/leey/tmv/BasicBrowser/')
     xml_path = "/home/leey/plpr-scraper/data/19wahlperiode/"
-
+elif platform.node() == 'finn-ThinkPadMCC':
+    # local paths
+    sys.path.append('/media/Data/MCC/tmv/BasicBrowser/')
+    xml_path = '/media/Data/MCC/Parliamentary_protocols/plpr-scraper/data/19wahlperiode/'
 else:
     # local paths
     sys.path.append('/home/leey/Documents/Data/tmv/BasicBrowser/')
@@ -174,6 +177,8 @@ class parse_xml_items(object):
 
         self.get_or_create_objects()
 
+        text = []
+
         ### start parsing of speeches
         speech_list = ['J','O','J_1']
         for div in self.divs: # speech in list of <rede>
@@ -215,7 +220,11 @@ class parse_xml_items(object):
                                 if speaker is None:
                                     print(fullname)
 
-                                # creating utterance
+                                # complete last utterance if there is still text
+                                if text:
+                                    para = self.create_paragraph(text, ut)
+
+                                # create new utterance
                                 text = []
 
                                 ut = pm.Utterance(
@@ -240,7 +249,11 @@ class parse_xml_items(object):
                 #    if len(speaker_role_set) > 1:
                 #       print("Warning: several speaker roles matching")
 
-                                # creating utterance
+                                # complete last utterance if there is still text
+                                if text:
+                                    para = self.create_paragraph(text, ut)
+
+                                # create new utterance
                                 text = []
 
                                 ut = pm.Utterance(
@@ -250,16 +263,22 @@ class parse_xml_items(object):
                                     #speaker_role=speaker_role
                                 )
                                 ut.save()
+                                if self.v > 1:
+                                    print("tag = name", speaker)
 
                         elif uts.tag == "p" and uts.get("klasse") in speech_list:
                             if uts.text:
                                 text.append(uts.text)
+                            if self.v > 1:
+                                print("tag = p", uts.text)
 
                         elif uts.tag == "kommentar":
                             if text:
                                 para = self.create_paragraph(text, ut)
                                 text = []
                             self.add_interjections(uts.text, para)
+                            if self.v > 1:
+                                print("tag = kommentar", uts.text)
                         #else:
                         #    print("unknown tag")
 
@@ -279,6 +298,8 @@ if __name__ == '__main__':
 
     delete_all = False
     delete_additional_persons = False
+
+    verbosity = 2
 
     if delete_all:
         print("Deleting all documents, utterances, paragraphs and interjections.")
@@ -302,9 +323,9 @@ if __name__ == '__main__':
         print("reading from {}".format(xml_file))
 
         xtree = etree.parse(xml_file)
-        parser = parse_xml_items(xtree)
+        parser = parse_xml_items(xtree, v=verbosity)
 
-        pm.Document.objects.filter(parlperiod__n=parser.wp, sitting=parser.session).delete()
+        #pm.Document.objects.filter(parlperiod__n=parser.wp, sitting=parser.session).delete()
         parser.run()
         print("Done.")
 
@@ -325,5 +346,5 @@ if __name__ == '__main__':
             pm.Document.objects.filter(parlperiod__n=pperiod, sitting=session,
                                        text_source__startswith="from protocol scraping").delete()
 
-            parser = parse_xml_items(xtree, period=pperiod, session=session)
+            parser = parse_xml_items(xtree, period=pperiod, session=session, v=verbosity)
             parser.run()
