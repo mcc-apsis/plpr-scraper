@@ -227,7 +227,7 @@ class SpeechParser(object):
                     if self.verbosity > 0:
                         print("= setting stopword flag in line {}: {}".format(self.line_number, sw))
                     has_stopword = True
-            #==== still need this? ====#    
+            #==== still need this? ====#
 
             #===== testing agendas =====#
             is_top = False
@@ -469,7 +469,7 @@ def parse_transcript(file, verbosity=1):
         doc_type="Plenarprotokoll",
         date=german_date(date),
         sitting=session,
-        text_source="from https://www.bundestag.de/service/opendata (scans of pdfs with xml metadata)"
+        text_source="updated - from https://www.bundestag.de/service/opendata (scans of pdfs with xml metadata)"
     )
     if created:
         print("created new object for plenary session document")
@@ -645,7 +645,8 @@ if __name__ == '__main__':
     # settings for parsing
     delete_additional_persons = False
     delete_all = False
-    verbosity = 2
+    delete_old = False
+    verbosity = 1
 
     if delete_all:
         print("Deleting all documents, utterances, paragraphs and interjections.")
@@ -665,7 +666,7 @@ if __name__ == '__main__':
     count_warnings_sum = 0
 
     wps = range(1, 0, -1)
-    sessions = range(183, 184)
+    sessions = range(1, 6)
 
     print("start parsing...")
     for wp in wps:
@@ -680,10 +681,11 @@ if __name__ == '__main__':
             filename = "{wp:02d}{s:03d}.xml".format(wp=wp, s=session)
             if filename in filelist:
 
-                # delete old protocol
-                pm.Document.objects.filter(parlperiod__n=wp, sitting=session,
-                                           text_source="from https://www.bundestag.de/service/opendata "
-                                                       "(scans of pdfs with xml metadata)").delete()
+                if delete_old: # delete old protocol
+                    pm.Document.objects.filter(parlperiod__n=wp, sitting=session,
+                                               text_source="from https://www.bundestag.de/service/opendata "
+                                                           "(scans of pdfs with xml metadata)").delete()
+
                 f = archive.open(filename)
                 print(f)
                 parser_errors, parser_warnings = parse_transcript(f, verbosity=verbosity)
