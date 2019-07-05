@@ -299,7 +299,7 @@ if __name__ == '__main__':
     delete_all = False
     delete_additional_persons = False
 
-    verbosity = 2
+    verbosity = 1
 
     if delete_all:
         print("Deleting all documents, utterances, paragraphs and interjections.")
