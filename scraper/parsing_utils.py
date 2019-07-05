@@ -111,10 +111,11 @@ def find_person_in_db(name, add_info=dict(), create=True,
                     position, add_info["position"]))
         position = add_info["position"]
 
-    if position and verbosity > 1:
-        print("= position: {}".format(position.group(0)))
-
+    if position:
         position = position.group(0)
+        if verbosity > 1:
+            print("= position: {}".format(position.group(0)))
+
     cname = PERSON_POSITION.sub('', name).strip(' ,')
 
     title = TITLE.match(cname)
@@ -233,8 +234,7 @@ def find_person_in_db(name, add_info=dict(), create=True,
             person.in_parlperiod = [wp]
             person.active_country = cmodels.Country.objects.get(name='Germany')
             person.information_source = "from protocol scraping " \
-                                        "{wp:02d}/{sn} {type}: {name}".format(wp=wp, sn=session_str,
-                                                                              type=source_str, name=original_string)
+                                        "{}/{} {}: {}".format(wp, session_str,source_str, original_string)
             person.save()
             print("Created person: {}".format(person))
             return person
@@ -259,11 +259,15 @@ class POI(object):
         if ": " in text:
             sinfo = text.split(': ', 1)
             speaker = sinfo[0].split(' ')
-            speaker_match = PARTY_MEMBER_PDF_POI.match(sinfo[0])
+            speaker_match = PARTY_MEMBER_PDF_POI.match(sinfo[0]) #or
+                            #ABG_POI.match(sinfo[0]))
 
             if speaker_match:
                 self.speakers.append(speaker_match.group(1))
                 self.speaker_party = search_person_party(speaker_match.group(3))
+                #if speaker_match.group(3) is not None and \
+                #len(speaker_match.group(3)) > 0:
+                #    self.speaker_party = search_person_party(speaker_match.group(3))
 
                 if speaker_match.group(2) is not None:
                     self.speaker_ortszusatz = REMOVE_BRACKET.match(speaker_match.group(2)).group(1)
