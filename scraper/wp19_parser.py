@@ -116,7 +116,7 @@ class parse_xml_items(object):
             )
 
         doc.sitting = self.session
-        doc.text_source = "XML from " + self.original_source
+        doc.text_source = "updated - XML from " + self.original_source
         doc.save()
 
         # delete old utterances associated with the doc
@@ -230,9 +230,14 @@ class parse_xml_items(object):
                                 ut = pm.Utterance(
                                     document = self.doc,
                                     speaker = speaker,
-                                    agenda_item = agenda_item
                                     #speaker_role=speaker_role
                                 )
+
+                                try:
+                                    ut.agenda_item = agenda_item
+                                except UnboundLocalError:
+                                    pass
+
                                 ut.save()
 
 
@@ -259,9 +264,14 @@ class parse_xml_items(object):
                                 ut = pm.Utterance(
                                     document=self.doc,
                                     speaker=speaker,
-                                    agenda_item = agenda_item
                                     #speaker_role=speaker_role
                                 )
+
+                                try:
+                                    ut.agenda_item = agenda_item
+                                except UnboundLocalError:
+                                    pass
+
                                 ut.save()
                                 if self.v > 1:
                                     print("tag = name", speaker)
@@ -315,7 +325,7 @@ if __name__ == '__main__':
     if single_doc:
         # single file
         wp = 19
-        session = 64
+        session = 24
         #{wp:02d}/
         xml_file = os.path.join(xml_path, "{wp:02d}{sn:03d}-data.xml".format(wp=wp, sn=session))
         namespaces = {'tei': 'http://www.tei-c.org/ns/1.0'}
@@ -333,7 +343,7 @@ if __name__ == '__main__':
 
     # go through all scripts iteratively
     pperiod = 19
-    for session in range(86, 300):
+    for session in range(1, 109):
 
         xml_file = os.path.join(xml_path, "{wp:02d}{sn:03d}-data.xml".format(wp=pperiod, sn=session))
 
