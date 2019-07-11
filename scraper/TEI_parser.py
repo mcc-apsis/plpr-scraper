@@ -187,6 +187,15 @@ class parse_tei_items(object):
             if self.v > 1:
                 print("TEI div type: {}".format(div.get("type")))
 
+            #===== testing agendas =====#
+            agenda_item = div.get("desc")
+            tops, created = pm.AgendaItem.objects.get_or_create(
+            title = agenda_item,
+            document = doc
+            )
+            tops.save()
+            #===== testing agendas =====#
+
             for sp in div.getchildren():
                 if self.v > 1:
                     print("TEI current speaker: {}".format(sp.get("who")))
