@@ -112,9 +112,13 @@ def find_person_in_db(name, add_info=dict(), create=True,
         position = add_info["position"]
 
     if position:
-        position = position.group(0)
-        if verbosity > 1:
-            print("= position: {}".format(position.group(0)))
+        try:
+            position = position.group(0)
+            if verbosity > 1:
+                print("= position: {}".format(position.group(0)))
+        except AttributeError:
+            pass
+
 
     cname = PERSON_POSITION.sub('', name).strip(' ,')
 
