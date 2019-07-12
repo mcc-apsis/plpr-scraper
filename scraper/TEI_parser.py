@@ -21,8 +21,10 @@ if platform.node() == "mcc-apsis":
 
 else:
     # local paths
-    sys.path.append('/media/Data/MCC/tmv/BasicBrowser/')
-    tei_path = "/media/Data/MCC/Parliament Germany/GermaParlTEI-master"
+    # sys.path.append('/media/Data/MCC/tmv/BasicBrowser/')
+    # tei_path = "/media/Data/MCC/Parliament Germany/GermaParlTEI-master"
+    sys.path.append('/home/leey/Documents/Data/tmv/BasicBrowser/')
+    tei_path = "/home/leey/Documents/Data/GermaParlTEI-master"
 
 
 #sys.path.append('/home/galm/software/django/tmv/BasicBrowser/')
@@ -121,7 +123,7 @@ class parse_tei_items(object):
             )
 
         doc.sitting = self.session
-        doc.text_source = "GermaParlTEI from " + self.original_source
+        doc.text_source = "updated - GermaParlTEI from " + self.original_source
         doc.save()
 
         # delete old utterances associated with the doc
@@ -191,7 +193,7 @@ class parse_tei_items(object):
             agenda_item = div.get("desc")
             tops, created = pm.AgendaItem.objects.get_or_create(
             title = agenda_item,
-            document = doc
+            document = self.doc
             )
             tops.save()
             #===== testing agendas =====#
@@ -261,6 +263,7 @@ if __name__ == '__main__':
 
     single_doc = False
     replace_docs = False
+    delete_old = False
 
     delete_all = False
     delete_additional_persons = False
@@ -297,7 +300,7 @@ if __name__ == '__main__':
 
     # go through all scripts iteratively
     for pperiod in range(13, 12, -1):
-        for session in range(0, 300):
+        for session in range(86, 249):
 
             xml_file = os.path.join(tei_path, "{wp:02d}/BT_{wp:02d}_{sn:03d}.xml".format(wp=pperiod, sn=session))
 
@@ -307,7 +310,9 @@ if __name__ == '__main__':
                 xtree = etree.parse(xml_file)
                 if replace_docs:
                     pm.Document.objects.filter(parlperiod__n=pperiod, sitting=session).delete()
-                pm.Document.objects.filter(parlperiod__n=pperiod, sitting=session,
+
+                if delete_old:
+                    pm.Document.objects.filter(parlperiod__n=pperiod, sitting=session,
                                            text_source__startswith="GermaParlTEI from ").delete()
 
                 parser = parse_tei_items(xtree, period=pperiod, session=session)
