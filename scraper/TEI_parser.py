@@ -189,14 +189,12 @@ class parse_tei_items(object):
             if self.v > 1:
                 print("TEI div type: {}".format(div.get("type")))
 
-            #===== testing agendas =====#
             agenda_item = div.get("desc")
             tops, created = pm.AgendaItem.objects.get_or_create(
             title = agenda_item,
             document = self.doc
             )
             tops.save()
-            #===== testing agendas =====#
 
             for sp in div.getchildren():
                 if self.v > 1:
@@ -225,7 +223,12 @@ class parse_tei_items(object):
                 ut = pm.Utterance(
                     document=self.doc,
                     speaker=speaker,
-                    speaker_role=speaker_role)
+                    speaker_role=speaker_role,
+                    )
+                try:
+                    ut.agenda_item = tops
+                except UnboundLocalError:
+                    pass
                 ut.save()
 
                 for c in sp.getchildren():
@@ -261,7 +264,7 @@ if __name__ == '__main__':
 
     sys.stdout = Logger()
 
-    single_doc = False
+    single_doc = True
     replace_docs = False
     delete_old = False
 
@@ -281,8 +284,8 @@ if __name__ == '__main__':
 
     if single_doc:
         # single file
-        wp = 18
-        session = 1
+        wp = 13
+        session = 86
 
         xml_file = os.path.join(tei_path, "{wp:02d}/BT_{wp:02d}_{sn:03d}.xml".format(wp=wp, sn=session))
         namespaces = {'tei': 'http://www.tei-c.org/ns/1.0'}
