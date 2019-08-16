@@ -527,13 +527,16 @@ def parse_transcript(file, verbosity=1):
                 document=doc,
                 speaker=per,
                 speaker_role=speaker_role,
-
             )
         else:
             ut = pm.Utterance(
                 document=doc,
                 speaker=per
             )
+        try:
+            ut.agenda_item = tops
+        except UnboundLocalError:
+            pass
 
         ut.save()
         utterance_counter += 1
@@ -558,7 +561,7 @@ def parse_transcript(file, verbosity=1):
 
             for ij in par['pois']:
                 if ij.type is None:
-                    print("! Warning: Ommiting interjection. Interjection type not identified for: {}".format(ij.poitext))
+                    print("! Warning: Omitting interjection. Interjection type not identified for: {}".format(ij.poitext))
                     warnings_counter2 += 1
                     continue
                 interjection = pm.Interjection(
@@ -646,7 +649,7 @@ if __name__ == '__main__':
     delete_additional_persons = False
     delete_all = False
     delete_old = False
-    verbosity = 1
+    verbosity = 0
 
     if delete_all:
         print("Deleting all documents, utterances, paragraphs and interjections.")
@@ -665,8 +668,8 @@ if __name__ == '__main__':
     count_warnings_docs = 0
     count_warnings_sum = 0
 
-    wps = range(1, 0, -1)
-    sessions = range(1, 6)
+    wps = range(13, 12, -1)
+    sessions = range(1, 2)
 
     print("start parsing...")
     for wp in wps:
