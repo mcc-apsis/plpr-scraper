@@ -171,6 +171,7 @@ def update_parties():
             party = Party(name=p['name'])
 
         party.alt_names = p['alt_names']
+        party.parliament = parl
         party.save()
 
 
